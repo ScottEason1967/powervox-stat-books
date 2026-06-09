@@ -8,20 +8,24 @@
 // the visitor's browser only ever talks to this site, there is no key exposure
 // and no cross-origin (CORS) block.
 //
-// WORKS AS-IS ON: Vercel (put this file at /api/companies-house.js) and Netlify
-// (it is picked up as a function). Both run modern Node with a global fetch().
+// WORKS AS-IS ON: Vercel (put this file at /api/companies-house.js) and Netlify.
+// Needs Node 18+ (global fetch) and the pdf-parse dependency (see package.json).
 //
 // SETUP (one time):
-//   1. Get a free Companies House API key:
-//      https://developer.company-information.service.gov.uk/  -> register ->
-//      create an application -> create a "Live" REST key.
-//   2. In the host dashboard, add an environment variable:
-//        CH_API_KEY = your_key
-//   3. Deploy. The button then works with no further steps for the visitor.
+//   1. Free Companies House API key:
+//      https://developer.company-information.service.gov.uk/ -> register ->
+//      create application -> create a "Live" REST key.
+//   2. Add an environment variable on the host:  CH_API_KEY = your_key
+//   3. Deploy.
 //
-// Returns JSON: { company, officers, psc, filings } — the exact shape the page's
-// merge logic consumes.
+// Returns JSON: { company, officers, psc, filings, members } — the shape the
+// page's merge logic consumes. The `members` block is reconstructed from the
+// incorporation and confirmation statement DOCUMENTS, which is where Companies
+// House keeps shareholders (they are not in the plain JSON feeds). PDF layouts
+// vary, so members is a best-effort draft to verify, not a guarantee.
 // -----------------------------------------------------------------------------
+
+const pdf = require("pdf-parse/lib/pdf-parse.js"); // bypass package index test harness
 
 const BASE = "https://api.company-information.service.gov.uk";
 
@@ -38,7 +42,6 @@ async function fetchAllFilings(number, key) {
   const items = [];
   let start = 0;
   const per = 100;
-  // cap at a few pages so a very long history can't hang the request
   for (let page = 0; page < 5; page++) {
     const data = await chGet(`/company/${number}/filing-history?items_per_page=${per}&start_index=${start}`, key);
     if (!data || data.__status || !Array.isArray(data.items)) break;
@@ -50,10 +53,174 @@ async function fetchAllFilings(number, key) {
   return items;
 }
 
-// Vercel/Netlify Node function signature: (req, res)
+// -----------------------------------------------------------------------------
+// Document download + text extraction
+// -----------------------------------------------------------------------------
+// The filing-history item carries links.document_metadata (a full Document API
+// URL). Appending /content returns the file. The content endpoint usually 302s
+// to a signed S3 URL that must be fetched WITHOUT the auth header.
+async function fetchDocumentText(metadataUrl, key) {
+  try {
+    if (!metadataUrl) return "";
+    const auth = "Basic " + Buffer.from(key + ":").toString("base64");
+    const contentUrl = metadataUrl.replace(/\/+$/, "") + "/content";
+    let r = await fetch(contentUrl, {
+      headers: { Authorization: auth, Accept: "application/pdf" },
+      redirect: "manual"
+    });
+    if (r.status >= 300 && r.status < 400) {
+      const loc = r.headers.get("location");
+      if (!loc) return "";
+      r = await fetch(loc); // signed URL: no auth header
+    }
+    if (!r.ok) return "";
+    const buf = Buffer.from(await r.arrayBuffer());
+    const data = await pdf(buf);
+    return (data && data.text) ? data.text : "";
+  } catch (e) {
+    return "";
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Parsing heuristics  (THE TUNABLE PART)
+// -----------------------------------------------------------------------------
+// Confirmation statements (and the incorporation document) for non-traded
+// companies list each shareholder's name and holding, plus transfers since the
+// previous statement. WebFiling text is reasonably consistent; software-filed
+// and older scanned documents vary. These heuristics target the common layout
+// and are written to be easy to adjust once we see a real document's text.
+
+function normaliseClass(raw) {
+  if (!raw) return "";
+  let c = raw.trim().replace(/\s+/g, " ");
+  c = c.replace(/\b(shares?|share)\b/gi, "").trim();
+  if (!/ordinary|preference|deferred|redeemable|[A-Z]\b/i.test(c)) return "";
+  // Title-case the class label
+  return c.split(" ").map(w => /^[A-Z]$/.test(w) ? w : (w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())).join(" ");
+}
+
+// Returns [{ name, shares, cls }]
+function parseShareholders(text) {
+  if (!text) return [];
+  const out = [];
+  // Normalise whitespace but keep line structure
+  const t = text.replace(/\r/g, "");
+  // Pattern A: "Shareholding 1: 250 ORDINARY shares ... Name: MR SCOTT EASON"
+  const reBlock = /shareholding\s*\d+\s*:?[\s]*([\d,]+)\s+([A-Z][A-Z0-9 .\-]{1,30}?)\s+shares?[\s\S]{0,160}?name\s*:?\s*([^\n\r]{2,80})/gi;
+  let m;
+  while ((m = reBlock.exec(t)) !== null) {
+    const shares = parseInt(m[1].replace(/,/g, ""), 10);
+    const cls = normaliseClass(m[2]);
+    const name = cleanName(m[3]);
+    if (name && shares > 0) out.push({ name, shares, cls });
+  }
+  // Only the well-anchored "Shareholding N: <count> <class> shares ... Name: <name>"
+  // layout is trusted. Anything else leaves members blank for manual entry rather
+  // than risk wrong figures in a statutory register. rawSample is returned so new
+  // layouts can be added here after seeing a real document.
+  return dedupeShareholders(out);
+}
+
+function cleanName(s) {
+  let n = (s || "").replace(/\s+/g, " ").trim();
+  // strip trailing label fragments
+  n = n.replace(/\b(shareholding|class|number|nominal|currency|shares?)\b.*$/i, "").trim();
+  n = n.replace(/[,:;]+$/, "").trim();
+  if (n.length < 2 || n.length > 80) return "";
+  return n;
+}
+
+function dedupeShareholders(list) {
+  const seen = new Set();
+  const out = [];
+  for (const s of list) {
+    const k = s.name.replace(/[^a-z]/gi, "").toLowerCase() + "|" + (s.cls || "") + "|" + s.shares;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+  }
+  return out;
+}
+
+// Returns [{ date, detail }]
+function parseTransfers(text) {
+  if (!text) return [];
+  const out = [];
+  const re = /([\d,]+)\s+([A-Z][A-Z0-9 .\-]{1,30}?)\s+shares?\s+transferred\s+(?:on\s+)?(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const shares = m[1].replace(/,/g, "");
+    const cls = normaliseClass(m[2]);
+    out.push({ date: normaliseDate(m[3]), detail: shares + " " + cls + " shares transferred" });
+  }
+  return out;
+}
+
+function normaliseDate(s) {
+  const m = /(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/.exec(s || "");
+  if (!m) return s;
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  let yr = m[3]; if (yr.length === 2) yr = "20" + yr;
+  const mo = parseInt(m[2], 10);
+  return parseInt(m[1], 10) + " " + (months[mo - 1] || m[2]) + " " + yr;
+}
+
+// Build the members block from documents. Walk confirmation statements newest
+// first; use the first one that yields shareholders for the current list.
+async function buildMembers(filings, key) {
+  const isCS = f => /^CS01$/i.test(f.type || "") || (f.category || "") === "confirmation-statement" ||
+                    (f.category || "") === "annual-return" || /^363|^AR01/i.test(f.type || "");
+  const isInc = f => /^NEWINC$/i.test(f.type || "") || (f.category || "") === "incorporation";
+
+  const csFilings = filings.filter(isCS)
+    .sort((a, b) => String(b.date).localeCompare(String(a.date))); // newest first
+  const incFiling = filings.find(isInc);
+
+  let current = [];
+  let source = "";
+  const docsToScan = csFilings.slice(0, 5);
+  if (incFiling) docsToScan.push(incFiling);
+
+  const transfers = [];
+  let rawSample = "";
+
+  for (const f of docsToScan) {
+    const metaUrl = f.links && f.links.document_metadata;
+    const text = await fetchDocumentText(metaUrl, key);
+    if (!text) continue;
+    if (!rawSample) rawSample = text.slice(0, 1200);
+    parseTransfers(text).forEach(t => transfers.push(t));
+    if (current.length === 0) {
+      const sh = parseShareholders(text);
+      if (sh.length) {
+        current = sh;
+        source = isInc(f) ? "as at incorporation" : ("per confirmation statement dated " + chDate(f.date));
+      }
+    }
+  }
+
+  // name, class and share count only — nominal value and address are left blank
+  // for the user, to avoid putting guessed figures into a statutory register.
+  current = current.map(s => ({ name: s.name, cls: s.cls, shares: s.shares, nominal: "" }));
+
+  return { current, source, transfers, rawSample };
+}
+
+function chDate(s) {
+  if (!s) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (!m) return s;
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return parseInt(m[3], 10) + " " + months[parseInt(m[2], 10) - 1] + " " + m[1];
+}
+
+// -----------------------------------------------------------------------------
+// Handler
+// -----------------------------------------------------------------------------
 module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=300"); // cache 5 min
+  res.setHeader("Cache-Control", "public, max-age=300");
 
   const key = process.env.CH_API_KEY;
   if (!key) {
@@ -61,7 +228,6 @@ module.exports = async function handler(req, res) {
     return res.end(JSON.stringify({ error: "Server is missing the CH_API_KEY environment variable." }));
   }
 
-  // company number from the query string
   let number = "";
   try {
     if (req.query && req.query.number) number = String(req.query.number);
@@ -94,11 +260,17 @@ module.exports = async function handler(req, res) {
       fetchAllFilings(number, key)
     ]);
 
+    // Reconstruct members from the incorporation + confirmation statement docs.
+    // Best-effort; if parsing finds nothing, members is simply empty.
+    let members = { current: [], source: "", transfers: [], rawSample: "" };
+    try { members = await buildMembers(filings, key); } catch (e) { /* leave empty */ }
+
     const payload = {
       company,
       officers: (officers && Array.isArray(officers.items)) ? officers.items : [],
       psc: (psc && Array.isArray(psc.items)) ? psc.items : [],
-      filings: Array.isArray(filings) ? filings : []
+      filings: Array.isArray(filings) ? filings : [],
+      members
     };
 
     res.statusCode = 200;
@@ -109,5 +281,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-// Allow `export default` style imports too (Vercel ESM / Netlify).
 module.exports.default = module.exports;

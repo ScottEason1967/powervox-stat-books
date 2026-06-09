@@ -1130,6 +1130,29 @@ function mergeCompaniesHouse(p) {
     }
   }
 
+  // ---- Members (reconstructed from incorporation + confirmation statements) ----
+  if (p.members && Array.isArray(p.members.current) && p.members.current.length) {
+    let added = 0;
+    p.members.current.forEach(m => {
+      if (!m.name) return;
+      const cls = m.cls || "";
+      const exists = data.members.current.some(x => sameName(x.member, m.name) && (x.cls || "") === cls);
+      if (!exists) {
+        data.members.current.push({
+          member: displayName(m.name), address: "", cls: cls,
+          shares: (m.shares != null ? String(m.shares) : ""),
+          nominal: m.nominal || "", paidUp: "Fully paid"
+        });
+        added++;
+        log.push({ kind: "added", msg: "Added member: " + displayName(m.name) + (m.shares ? (" — " + m.shares + " " + cls) : "") });
+      }
+    });
+    if (added && p.members.source) data.members.asAtNote = "Current members (" + p.members.source + ")";
+    if (added) log.push({ kind: "conflict", msg: "Member addresses are not on the public record — please add them by hand." });
+  } else if (p.members && (!p.members.current || !p.members.current.length)) {
+    log.push({ kind: "skipped", msg: "Shareholders could not be read automatically from the filed documents — add the register of members by hand." });
+  }
+
   // ---- tidy: drop fully-empty seed rows the template ships with ----
   pruneBlanks();
 

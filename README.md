@@ -7,7 +7,7 @@ A statutory register that is both an editor and an issuable document. Hosted on 
 - **`Statutory_Register.html`** — the product. Editor plus register in one file, PowerVox-branded. Served at the site root.
 - **`api/companies-house.js`** — the backend endpoint that does the one-click pull (holds the API key, talks to Companies House).
 - **`vercel.json`** — serves the register at `/` and sets caching.
-- **`package.json`** — declares Node 18+ (needed for the function's built-in fetch).
+- **`package.json`** — declares Node 18+ and the pdf-parse dependency used to read shareholders from filed documents.
 - **`.gitignore`** — keeps secrets and local files out of the repo.
 - **`companies-house-fetch.py`** — offline fallback only. A script for pulling the data when the file is opened from disk rather than hosted. Most users never touch this.
 - **`README.md`** — this file.
@@ -16,7 +16,9 @@ A statutory register that is both an editor and an issuable document. Hosted on 
 
 The page calls `/api/companies-house?number=...` on its **own** site. That backend function holds the Companies House API key (kept as a hidden setting on the host, never sent to the visitor) and makes the request to Companies House. The visitor's browser only ever talks to the PowerVox site, so there is nothing for them to configure, the key is never exposed, and there is no browser security block. They click the button and it fills in.
 
-What the pull fills automatically: company information, current and past directors with appointment and resignation history, current and past PSCs with nature-of-control wording, share events from SH01/SH02-type filings, and the next accounts and confirmation statement due dates. What it leaves for the user: stock transfer detail between confirmation statements, share certificate numbers, internal consideration figures, and board minute references. Companies House does not hold any of those.
+What the pull fills automatically: company information, current and past directors with appointment and resignation history, current and past PSCs with nature-of-control wording, share events from SH01/SH02-type filings, the next accounts and confirmation statement due dates, and the register of members (shareholder names, share counts and classes) reconstructed from the incorporation and confirmation statement documents. What it leaves for the user: member addresses and nominal values (not on the public record), share certificate numbers, internal consideration figures, the exact within-year dates of transfers, and board minute references.
+
+A note on the members reconstruction. Shareholders are not in the plain data feeds; they live inside the filed documents. The backend downloads the incorporation and confirmation statement PDFs and reads the shareholders out of them. It targets the common WebFiling layout and only fills members when it can read them confidently, so a wrong figure never lands in the register. If a particular company's statements are in an unusual or scanned format, members may come back empty and the import summary says so, leaving you to add them by hand. The parser is written to be tuned: it can be extended once we see the text of a statement it doesn't yet read. This step runs only in the hosted backend; the offline `companies-house-fetch.py` does not reconstruct members.
 
 The merge is non-destructive. It never overwrites a value the user has edited; if their record and Companies House disagree, it keeps theirs and reports the difference. Running a pull twice does not create duplicates.
 
