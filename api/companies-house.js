@@ -125,7 +125,7 @@ function parseShareholders(text) {
 function cleanName(s) {
   let n = (s || "").replace(/\s+/g, " ").trim();
   // strip trailing label fragments
-  n = n.replace(/\b(shareholding|class|number|nominal|currency|shares?)\b.*$/i, "").trim();
+  n = n.replace(/\b(shareholding|class|number|nominal|currency|shares?|address)\b.*$/i, "").trim();
   n = n.replace(/[,:;]+$/, "").trim();
   if (n.length < 2 || n.length > 80) return "";
   return n;
@@ -142,6 +142,27 @@ function dedupeShareholders(list) {
   }
   return out;
 }
+
+// Returns [{ name, shares, cls }] from an incorporation document's
+// "Initial Shareholdings" blocks. Used for newly formed companies that have not
+// yet filed a confirmation statement, so shareholders live only here. Layout:
+//   Initial Shareholdings  Name: <NAME>  Address <...>
+//   Class of Shares: <CLASS>  Number of shares: <COUNT>
+function parseInitialShareholders(text) {
+  if (!text) return [];
+  const out = [];
+  const t = text.replace(/\r/g, "");
+  const re = /Initial Shareholdings[\s\S]*?Name:\s*([\s\S]*?)\s*Address\b[\s\S]*?Class of Shares:\s*([A-Za-z][A-Za-z0-9 ]*?)\s*Number of shares:\s*([\d,]+)/gi;
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    const name = cleanName(m[1].replace(/\n/g, " "));
+    const cls = normaliseClass(m[2]);
+    const shares = parseInt(m[3].replace(/,/g, ""), 10);
+    if (name && shares > 0) out.push({ name, shares, cls });
+  }
+  return dedupeShareholders(out);
+}
+function titleCaseName(s) { return (s || "").toLowerCase().replace(/\b\w/g, m => m.toUpperCase()); }
 
 // Returns [{ date, detail }]
 // Real layout: "<count> transferred on YYYY-MM-DD" (class and parties are not
@@ -186,19 +207,32 @@ async function buildMembers(filings, key) {
   if (incFiling) docsToScan.push(incFiling);
 
   const transfers = [];
+  const foundingAllotments = [];
   let rawSample = "";
 
   for (const f of docsToScan) {
     const metaUrl = f.links && f.links.document_metadata;
     const text = await fetchDocumentText(metaUrl, key);
     if (!text) continue;
-    if (!rawSample) rawSample = text.slice(0, 1200);
+    if (!rawSample) rawSample = text.slice(0, 1500);
     parseTransfers(text).forEach(t => transfers.push(t));
     if (current.length === 0) {
       const sh = parseShareholders(text);
       if (sh.length) {
         current = sh;
         source = isInc(f) ? "as at incorporation" : ("per confirmation statement dated " + chDate(f.date));
+      } else if (isInc(f)) {
+        // Newly formed company with no confirmation statement yet: read the
+        // initial shareholdings straight from the incorporation document.
+        const init = parseInitialShareholders(text);
+        if (init.length) {
+          current = init;
+          source = "as at incorporation";
+          init.forEach(s => foundingAllotments.push({
+            date: chDate(f.date),
+            details: s.shares + (s.cls ? " " + s.cls : "") + " shares allotted to " + titleCaseName(s.name) + " on incorporation"
+          }));
+        }
       }
     }
   }
@@ -207,7 +241,7 @@ async function buildMembers(filings, key) {
   // for the user, to avoid putting guessed figures into a statutory register.
   current = current.map(s => ({ name: s.name, cls: s.cls, shares: s.shares, nominal: "" }));
 
-  return { current, source, transfers, rawSample };
+  return { current, source, transfers, allotments: foundingAllotments, rawSample };
 }
 
 function chDate(s) {

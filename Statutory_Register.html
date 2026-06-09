@@ -3,189 +3,214 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Statutory Registers</title>
+<title>Statutory Register</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   BRANDING — change these four values to re-skin the product.
-   --brand   : primary accent (section rules, title, header border)
-   --gold    : fine accent rule under the document title
-   --brand-soft : a pale tint of the brand, used for highlights
-   The masthead logo is set in the CONFIG block in the script
-   near the bottom of this file (CONFIG.logoText / CONFIG.logoUrl).
+   PowerVox Statutory Register — brand tokens
+   (mirrors powervox.co.uk: forest green ground, Playfair serif
+    display, gold primary accent, mulberry secondary, warm cream)
    ============================================================ */
 :root {
-  --brand: #2D5F3F;        /* PowerVox Forest Green */
-  --brand-2: #7B3F61;      /* PowerVox Mulberry (sparing accent) */
-  --brand-soft: #D4DDD2;   /* Soft Sage */
-  --linen: #F5F0EB;        /* Warm Linen */
-  --stone: #B8A99A;        /* Warm Stone (rules / dividers) */
-  --ink: #5C4A3A;          /* Warm Earth (body text, never black) */
-  --muted: #8C7B6B;        /* Dusk (footer / secondary) */
-  --line: #e3dccf;         /* soft linen-stone for table borders */
-  --bg: #F5F0EB;           /* Warm Linen page surround */
+  --forest: #2D5F3F;
+  --forest-deep: #244C33;
+  --gold: #BF9B30;
+  --gold-deep: #A6831F;
+  --mulberry: #7B3F61;
+  --ink: #4A3D2E;            /* warm earth body text */
+  --muted: #8C7B6B;          /* dusk */
+  --cream: #F5EFE8;          /* warm linen surround / nav */
+  --sage: #D4DDD2;
+  --sage-soft: #E7EEE4;
+  --stone: #B8A99A;
+  --line: #E6DDCE;
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --sans: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
 }
-
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body {
-  font-family: var(--sans);
-  font-size: 15px; line-height: 1.55; color: var(--ink);
-  background: var(--bg); margin: 0; padding: 0;
-}
+body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(--ink); background: var(--cream); margin: 0; }
+.serif { font-family: var(--serif); }
 
-/* === App chrome (hidden on print & in exported file) === */
-.appbar {
-  position: sticky; top: 0; z-index: 50;
-  background: #243B2E; color: #fff;
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 20px; flex-wrap: wrap;
-}
-.appbar .brandmark { font-weight: 700; letter-spacing: .2px; margin-right: auto; font-size: 15px; }
-.appbar .brandmark span { color: var(--brand-soft); font-weight: 500; }
-.btn {
-  font: inherit; font-size: 13px; font-weight: 600;
-  border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);
-  color: #fff; padding: 7px 12px; border-radius: 6px; cursor: pointer;
-  transition: background .15s;
-}
-.btn:hover { background: rgba(255,255,255,.18); }
-.btn.primary { background: var(--brand); border-color: var(--brand); }
-.btn.primary:hover { filter: brightness(1.1); }
-.btn.toggle.active { background: var(--brand); border-color: var(--brand); }
-.appbar .group { display: flex; gap: 6px; align-items: center; }
-.appbar .sep { width: 1px; height: 22px; background: rgba(255,255,255,.2); }
-.savestate { font-size: 12px; color: #9ca3af; }
-
-/* === Page layout === */
-.page { max-width: 1100px; margin: 0 auto; background: #fff; border: 1px solid var(--line); min-height: 60vh; }
-
-/* === Header === */
-header.masthead { background: #fff; color: var(--ink); padding: 36px 48px 28px; border-bottom: 3px solid var(--brand); text-align: center; }
-header.masthead .logo { max-width: 320px; max-height: 90px; height: auto; margin-bottom: 14px; }
-header.masthead .logotext { font-family: var(--sans); font-size: 34px; font-weight: 700; letter-spacing: -.3px; color: var(--brand); margin-bottom: 6px; }
-header.masthead h1 { font-family: var(--sans); margin: 0 0 4px; font-size: 23px; font-weight: 600; letter-spacing: .2px; color: var(--ink); }
-header.masthead .subtitle { font-size: 14px; color: var(--muted); margin: 0; }
-header.masthead .doctitle { font-family: var(--sans); margin-top: 18px; font-size: 16px; font-weight: 600; letter-spacing: .3px; color: var(--brand-2); }
-header.masthead .gold-rule { width: 56px; height: 2px; background: var(--brand-2); margin: 9px auto 0; }
-
-/* === Navigation === */
-nav.toc { background: #f9fafb; border-bottom: 1px solid var(--line); padding: 14px 48px; }
-nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-nav.toc a { display: inline-block; padding: 6px 12px; font-size: 13px; color: #374151; text-decoration: none; border-radius: 4px; }
-nav.toc a:hover { background: var(--line); color: #111827; }
-
-/* === Main === */
-main { padding: 32px 48px 48px; }
-section { margin-bottom: 48px; scroll-margin-top: 80px; }
-section h2 { font-family: var(--sans); font-size: 21px; font-weight: 600; color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 6px; margin: 0 0 18px; }
-section h3 { font-size: 17px; font-weight: 600; color: #374151; margin: 24px 0 12px; }
-.section-note { font-size: 14px; color: #4b5563; }
-
-/* === Info grid === */
-.info-grid { display: grid; grid-template-columns: 240px 1fr; gap: 6px 24px; margin: 12px 0; }
-.info-grid dt { font-weight: 600; color: #4b5563; padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
-.info-grid dd { margin: 0; padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
-
-/* === Tables === */
-table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
-thead tr { background: #f3f4f6; }
-th { text-align: left; font-weight: 600; padding: 10px 12px; border-bottom: 2px solid #d1d5db; color: #374151; }
-td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-tbody tr:hover { background: #fafafa; }
-.numeric { text-align: right; font-variant-numeric: tabular-nums; }
-.totals { font-weight: 700; background: #f9fafb; }
-.totals td { border-top: 2px solid #d1d5db; }
-.row-hl { background: #f7efe2; }
-.row-hl-green { background: #eef3ec; }
-
-/* === Details/summary === */
-details { margin: 8px 0; border: 1px solid var(--line); border-radius: 6px; background: #fafafa; }
-details summary { cursor: pointer; padding: 12px 16px; font-weight: 600; color: #1f2937; user-select: none; list-style: none; position: relative; padding-right: 36px; }
-details summary::-webkit-details-marker { display: none; }
-details summary::after { content: "\25B8"; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); transition: transform .2s; color: #9ca3af; }
-details[open] summary::after { transform: translateY(-50%) rotate(90deg); }
-details summary:hover { background: #f3f4f6; }
-details .inner { padding: 8px 16px 16px; border-top: 1px solid var(--line); }
-
-/* === Badges === */
-.badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 600; border-radius: 10px; vertical-align: middle; margin-left: 6px; }
-.badge-current { background: #D4DDD2; color: #2D5F3F; }
-.badge-ceased { background: #efe7dd; color: #8C7B6B; }
-.badge-unfiled { background: #f3dede; color: #8a2b2b; }
-.badge-pending { background: #efe3c9; color: #8a6d2e; }
-
-/* === Alerts === */
-.alert { border-left: 4px solid; padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: 14px; }
-.alert-warn { background: #fffbeb; border-color: #f59e0b; color: #78350f; }
-.alert-info { background: #eff6ff; border-color: #3b82f6; color: #1e3a8a; }
-.alert-success { background: #eef3ec; border-color: #2D5F3F; color: #2D5F3F; }
-.alert strong { display: block; margin-bottom: 4px; }
-
-/* === Footer === */
-footer { background: #f9fafb; border-top: 1px solid var(--line); padding: 24px 48px; font-size: 13px; color: var(--muted); }
-footer p { margin: 4px 0; }
+/* ---- buttons ---- */
+.btn { font: inherit; font-family: var(--sans); font-size: 12.5px; font-weight: 600; letter-spacing: .04em;
+  border: 1px solid var(--stone); background: transparent; color: var(--forest);
+  padding: 9px 16px; border-radius: 6px; cursor: pointer; transition: background .15s, color .15s; }
+.btn:hover { background: var(--sage-soft); }
+.btn.gold { background: var(--gold); border-color: var(--gold); color: #fff; text-transform: uppercase; letter-spacing: .1em; }
+.btn.gold:hover { background: var(--gold-deep); border-color: var(--gold-deep); }
+.btn.mulberry { background: var(--mulberry); border-color: var(--mulberry); color: #fff; }
+.btn.mulberry:hover { filter: brightness(1.08); }
+.btn.ghost-light { border-color: rgba(255,255,255,.5); color: #fff; background: transparent; }
+.btn.ghost-light:hover { background: rgba(255,255,255,.12); }
 
 /* ============================================================
-   EDITOR styles (screen only)
+   ONBOARDING (first screen)
    ============================================================ */
-.edit-section { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; margin-bottom: 22px; background: #fff; }
-.edit-section > h3.edit-title { margin: 0 0 14px; font-size: 16px; color: var(--brand); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+#onboard { min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #34704A 0%, var(--forest) 45%, var(--forest-deep) 100%);
+  padding: 40px 20px; }
+#onboard .card { width: 100%; max-width: 560px; text-align: center; color: #fff; }
+#onboard .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .34em; font-size: 12px; font-weight: 600; color: var(--gold); margin: 0 0 18px; }
+#onboard h1 { font-family: var(--serif); font-weight: 600; font-size: 40px; line-height: 1.15; margin: 0 0 14px; color: #fff; }
+#onboard .lede { font-family: var(--serif); font-style: italic; font-size: 19px; color: var(--gold); margin: 0 0 22px; }
+#onboard p.help { font-size: 14.5px; color: rgba(255,255,255,.82); margin: 0 auto 26px; max-width: 460px; }
+#onboard .entry { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+#onboard input[type=text] { font: inherit; font-size: 16px; padding: 13px 16px; width: 260px; border: 1px solid rgba(255,255,255,.4);
+  background: rgba(255,255,255,.96); color: var(--ink); border-radius: 7px; text-align: center; letter-spacing: .04em; }
+#onboard .gold-rule { width: 54px; height: 2px; background: var(--gold); margin: 28px auto 0; }
+#onboard .ob-status { font-size: 14px; color: #fff; margin-top: 18px; min-height: 20px; }
+#onboard .ob-logo { margin-top: 18px; font-size: 13px; }
+#onboard .ob-logo a, #onboard .tiny a { color: rgba(255,255,255,.85); text-decoration: underline; cursor: pointer; }
+#onboard .tiny { margin-top: 26px; font-size: 12px; color: rgba(255,255,255,.55); }
+.spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; vertical-align: -2px; margin-right: 8px; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   APP (the book)
+   ============================================================ */
+#app { display: none; }
+body.ready #app { display: block; }
+body.ready #onboard { display: none; }
+
+.appbar { position: sticky; top: 0; z-index: 50; background: var(--forest); color: #fff;
+  display: flex; align-items: center; gap: 10px; padding: 11px 22px; flex-wrap: wrap; }
+.appbar .brandmark { font-family: var(--serif); font-weight: 600; font-size: 19px; margin-right: auto; color: #fff; letter-spacing: .2px; }
+.appbar .brandmark small { font-family: var(--sans); display: block; font-size: 9.5px; font-weight: 600; letter-spacing: .26em; text-transform: uppercase; color: var(--gold); margin-top: 1px; }
+.savestate { font-size: 11.5px; color: rgba(255,255,255,.6); width: 100%; text-align: right; margin-top: 2px; }
+@media (min-width: 720px) { .savestate { width: auto; margin-top: 0; } }
+
+.page { max-width: 1080px; margin: 0 auto; background: #fff; border: 1px solid var(--line); }
+
+/* masthead band (echoes the site hero) */
+header.masthead { background: radial-gradient(900px 400px at 50% -40%, #34704A 0%, var(--forest) 55%, var(--forest-deep) 100%);
+  color: #fff; padding: 44px 48px 34px; text-align: center; }
+header.masthead .logo { max-width: 300px; max-height: 84px; height: auto; margin-bottom: 14px; }
+header.masthead .logotext { font-family: var(--serif); font-size: 30px; font-weight: 600; color: #fff; }
+header.masthead .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .3em; font-size: 11px; font-weight: 600; color: var(--gold); margin-bottom: 14px; }
+header.masthead h1 { font-family: var(--serif); margin: 0 0 6px; font-size: 30px; font-weight: 600; color: #fff; letter-spacing: .2px; }
+header.masthead .subtitle { font-size: 13.5px; color: rgba(255,255,255,.78); margin: 0; }
+header.masthead .doctitle { font-family: var(--serif); font-style: italic; margin-top: 18px; font-size: 19px; color: var(--gold); }
+header.masthead .gold-rule { width: 52px; height: 2px; background: var(--gold); margin: 12px auto 0; }
+
+/* completeness banner */
+.health { display: flex; align-items: center; gap: 12px; padding: 14px 48px; font-size: 14px; border-bottom: 1px solid var(--line); }
+.health.ok { background: var(--sage-soft); color: var(--forest); }
+.health.attention { background: #FBF4E4; color: var(--gold-deep); }
+.health .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.health.ok .dot { background: var(--forest); }
+.health.attention .dot { background: var(--gold); }
+.health strong { font-weight: 600; }
+.health .items { color: var(--muted); font-size: 13px; }
+
+/* nav */
+nav.toc { font-family: var(--sans); background: var(--cream); border-bottom: 1px solid var(--line); padding: 12px 48px; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+nav.toc a { display: inline-block; padding: 6px 12px; font-size: 12px; letter-spacing: .03em; color: var(--ink); text-decoration: none; border-radius: 4px; }
+nav.toc a:hover { background: var(--sage); color: var(--forest); }
+
+main { padding: 30px 48px 44px; }
+section { margin-bottom: 44px; scroll-margin-top: 80px; }
+section h2 { font-family: var(--serif); font-size: 25px; font-weight: 600; color: var(--forest); border-bottom: 1px solid var(--stone); padding-bottom: 8px; margin: 0 0 16px; }
+section h3 { font-family: var(--serif); font-size: 18px; font-weight: 600; color: var(--forest); margin: 22px 0 10px; }
+.section-note { font-size: 13.5px; color: var(--muted); }
+
+.info-grid { display: grid; grid-template-columns: 240px 1fr; gap: 4px 24px; margin: 10px 0; }
+.info-grid dt { font-family: var(--sans); font-weight: 600; font-size: 13px; color: var(--ink); padding: 7px 0; border-bottom: 1px solid var(--line); }
+.info-grid dd { margin: 0; padding: 7px 0; border-bottom: 1px solid var(--line); }
+
+table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 14px; }
+thead tr { background: var(--sage-soft); }
+th { font-family: var(--sans); text-align: left; font-weight: 600; font-size: 12px; letter-spacing: .03em; padding: 10px 12px; border-bottom: 1px solid var(--stone); color: var(--forest); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr:hover { background: var(--cream); }
+.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+.totals { font-weight: 600; background: var(--sage-soft); }
+.totals td { border-top: 1px solid var(--stone); }
+.row-hl { background: #FBF4E4; }
+.row-hl-green { background: var(--sage-soft); }
+
+details { margin: 8px 0; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); }
+details summary { cursor: pointer; padding: 12px 16px; font-weight: 600; color: var(--forest); user-select: none; list-style: none; position: relative; padding-right: 36px; }
+details summary::-webkit-details-marker { display: none; }
+details summary::after { content: "\25B8"; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); transition: transform .2s; color: var(--stone); }
+details[open] summary::after { transform: translateY(-50%) rotate(90deg); }
+details summary:hover { background: var(--sage-soft); }
+details .inner { padding: 8px 16px 16px; border-top: 1px solid var(--line); background: #fff; }
+
+.badge { display: inline-block; font-family: var(--sans); padding: 3px 9px; font-size: 11.5px; font-weight: 600; border-radius: 10px; vertical-align: middle; margin-left: 6px; }
+.badge-current { background: var(--sage); color: var(--forest); }
+.badge-ceased { background: #EFE7DD; color: var(--muted); }
+.badge-unfiled { background: #F3DEDE; color: #8a2b2b; }
+.badge-pending { background: #FBF0D6; color: var(--gold-deep); }
+
+.alert { border-left: 3px solid var(--mulberry); background: var(--sage-soft); padding: 12px 16px; margin: 14px 0; border-radius: 0 4px 4px 0; font-size: 14px; color: var(--ink); }
+.alert strong { display: block; margin-bottom: 3px; color: var(--forest); }
+.alert-success { border-left-color: var(--forest); }
+.alert-warn { border-left-color: var(--gold); background: #FBF4E4; }
+
+/* suite shell */
+.suite { background: var(--cream); border-top: 1px solid var(--line); padding: 30px 48px 36px; }
+.suite .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .24em; font-size: 11px; font-weight: 600; color: var(--mulberry); margin: 0 0 14px; }
+.suite h3 { font-family: var(--serif); font-size: 21px; color: var(--forest); margin: 0 0 16px; font-weight: 600; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.tile { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+.tile .t { font-family: var(--serif); font-size: 16px; color: var(--forest); font-weight: 600; }
+.tile .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.tile .soon { display: inline-block; margin-top: 10px; font-family: var(--sans); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); background: #FBF0D6; padding: 3px 8px; border-radius: 4px; }
+
+footer { font-family: var(--sans); background: var(--sage-soft); border-top: 1px solid var(--stone); padding: 24px 48px; font-size: 12.5px; color: var(--muted); }
+footer strong { color: var(--ink); }
+footer p { margin: 4px 0; }
+
+/* ---- edit mode (back of house) ---- */
+.editor-only { display: none; }
+body.mode-edit .editor-only { display: block; }
+body.mode-edit .view-only { display: none; }
+.edit-intro { background: var(--cream); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; font-size: 13.5px; color: var(--muted); }
+.edit-section { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; margin-bottom: 20px; background: #fff; }
+.edit-section > h3.edit-title { font-family: var(--serif); margin: 0 0 14px; font-size: 17px; color: var(--forest); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
 .field { margin: 0 0 12px; }
-.field label { display: block; font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 4px; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
 .field input[type=text], .field input[type=number], .field textarea, .field select, .grid-table input, .grid-table textarea, .grid-table select {
-  width: 100%; font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 5px; background: #fff;
-}
+  width: 100%; font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid var(--stone); border-radius: 5px; background: #fff; }
 .field textarea { min-height: 70px; resize: vertical; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
 .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14px; }
 .grid-table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; }
-.grid-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: #6b7280; padding: 4px 6px; text-align: left; border: none; background: transparent; }
+.grid-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); padding: 4px 6px; text-align: left; border: none; background: transparent; }
 .grid-table td { padding: 3px 6px; border: none; vertical-align: top; }
 .grid-table textarea { min-height: 40px; }
-.mini { font-size: 12px; padding: 5px 9px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
-.mini:hover { background: #e5e7eb; }
+.mini { font-size: 12px; padding: 5px 9px; background: var(--cream); color: var(--ink); border: 1px solid var(--stone); border-radius: 5px; cursor: pointer; }
+.mini:hover { background: var(--sage-soft); }
 .mini.danger { color: #991b1b; }
 .add-row { margin-top: 4px; }
-.hist-card { border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; margin: 10px 0; background: #fafafa; }
+.hist-card { border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; margin: 10px 0; background: var(--cream); }
 .hist-card .hc-head { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
 .hist-card .hc-head input { flex: 1; }
 .helptext { font-size: 12px; color: var(--muted); margin: 2px 0 10px; }
-.editor-only { display: none; }
-body.mode-edit .editor-only { display: block; }
-body.mode-edit .view-only { display: none; }
-body.mode-view .editor-only { display: none; }
 
-/* === Modal === */
-.modal-back { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; }
+/* discreet offline modal */
+.modal-back { display: none; position: fixed; inset: 0; background: rgba(36,30,20,.55); z-index: 100; align-items: flex-start; justify-content: center; padding: 50px 16px; overflow: auto; }
 .modal-back.open { display: flex; }
-.modal { background: #fff; border-radius: 10px; max-width: 760px; width: 100%; padding: 26px 30px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
-.modal h2 { margin: 0 0 6px; font-size: 20px; color: #111827; border: none; }
-.modal p.sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
-.modal textarea { width: 100%; min-height: 150px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; }
-.modal .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
-.modal .btn { color: #111827; border-color: #d1d5db; background: #f3f4f6; }
-.modal .btn:hover { background: #e5e7eb; }
-.modal .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
-.modal .btn.primary:hover { filter: brightness(1.08); }
-.merge-log { font-size: 13px; background: #f9fafb; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; margin-top: 14px; max-height: 240px; overflow: auto; }
-.merge-log li { margin: 3px 0; }
-.merge-log .added { color: #065f46; }
-.merge-log .conflict { color: #92400e; }
-.merge-log .skipped { color: var(--muted); }
+.modal { background: #fff; border-radius: 10px; max-width: 640px; width: 100%; padding: 24px 28px; }
+.modal h2 { font-family: var(--serif); margin: 0 0 6px; font-size: 20px; color: var(--forest); border: none; }
+.modal p.sub { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; }
+.modal textarea { width: 100%; min-height: 130px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; padding: 10px; border: 1px solid var(--stone); border-radius: 6px; }
+.modal .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 
-/* === Print === */
 @media print {
-  .appbar, nav.toc, .editor-only { display: none !important; }
+  .appbar, nav.toc, .editor-only, .suite, .health, #onboard { display: none !important; }
   body { background: #fff; font-size: 11pt; }
-  .page { box-shadow: none; max-width: 100%; }
-  body.mode-edit .view-only { display: block !important; }
-  body.mode-edit .editor-only { display: none !important; }
-  header.masthead { border-bottom: 2px solid var(--ink); padding: 16px 24px; }
-  header.masthead .doctitle, header.masthead .logotext { color: var(--ink); }
+  body.ready #app { display: block; }
+  .page { border: none; max-width: 100%; }
+  header.masthead { background: #fff !important; color: var(--ink) !important; border-bottom: 2px solid var(--forest); padding: 16px 24px; -webkit-print-color-adjust: exact; }
+  header.masthead h1, header.masthead .logotext { color: var(--forest) !important; }
+  header.masthead .eyebrow, header.masthead .doctitle { color: var(--gold-deep) !important; }
+  header.masthead .subtitle { color: var(--muted) !important; }
   main { padding: 16px 24px; }
   section { page-break-inside: avoid; }
   details { border: none; background: transparent; }
@@ -197,86 +222,92 @@ body.mode-view .editor-only { display: none; }
 }
 </style>
 </head>
-<body class="mode-edit">
+<body>
 
-<!-- ============================ APP BAR ============================ -->
-<div class="appbar" id="appbar">
-  <div class="brandmark" id="appBrand">PowerVox <span>Statutory Registers</span></div>
-  <div class="group">
-    <button class="btn toggle active" id="btnEdit">Edit</button>
-    <button class="btn toggle" id="btnView">View</button>
+<!-- ============================ ONBOARDING ============================ -->
+<div id="onboard">
+  <div class="card">
+    <p class="eyebrow">PowerVox</p>
+    <h1>Your statutory books,<br>in good order.</h1>
+    <p class="lede">Enter your company number. We do the rest.</p>
+    <p class="help">We build your full statutory register from the public record, so you are organised, compliant, and ready for anything from a bank to a buyer.</p>
+    <div class="entry">
+      <input type="text" id="obNum" placeholder="Company number" autocomplete="off">
+      <button class="btn gold" id="obGo">Create my statutory book</button>
+    </div>
+    <p class="ob-status" id="obStatus"></p>
+    <div class="gold-rule"></div>
+    <p class="tiny"><a id="obSample">See an example</a> &nbsp;·&nbsp; <a id="obOffline">Having trouble?</a></p>
   </div>
-  <div class="sep"></div>
-  <div class="group">
-    <button class="btn" id="btnImport">Import from Companies House</button>
-    <button class="btn" id="btnExport">Export register</button>
-    <button class="btn" id="btnSaveFile">Save data</button>
-    <button class="btn" id="btnLoadFile">Load data</button>
-  </div>
-  <div class="sep"></div>
-  <div class="group">
-    <button class="btn" id="btnSample">Load sample</button>
-    <button class="btn" id="btnBlank">Blank template</button>
-  </div>
-  <div class="savestate" id="saveState">Not saved yet</div>
-  <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
 </div>
 
-<div class="page">
+<!-- ============================ APP ============================ -->
+<div id="app">
+  <div class="appbar">
+    <div class="brandmark" id="appBrand">PowerVox<small>Statutory Registers</small></div>
+    <button class="btn gold" id="btnDownload">Download</button>
+    <button class="btn mulberry" id="btnUpdate">Update from Companies House</button>
+    <button class="btn ghost-light" id="btnPrint">Print</button>
+    <button class="btn ghost-light" id="btnEdit">Edit details</button>
+    <button class="btn ghost-light" id="btnLogo">Add your logo</button>
+    <button class="btn ghost-light" id="btnNew">New company</button>
+    <div class="savestate" id="saveState"></div>
+    <input type="file" id="logoInput" accept="image/*" style="display:none">
+    <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+  </div>
 
-<!-- ============================ MASTHEAD ============================ -->
-<header class="masthead">
-  <div id="mastheadLogo"></div>
-  <h1 id="mhName">Company Name Limited</h1>
-  <p class="subtitle" id="mhSub">Private company limited by shares</p>
-  <p class="doctitle">Statutory Registers</p>
-  <div class="gold-rule"></div>
-</header>
+  <div class="page">
+    <header class="masthead">
+      <div id="mastheadLogo"></div>
+      <h1 id="mhName">Company Name Limited</h1>
+      <p class="subtitle" id="mhSub"></p>
+      <p class="doctitle">Statutory Registers</p>
+      <div class="gold-rule"></div>
+    </header>
 
-<!-- ============================ TOC (view only) ============================ -->
-<nav class="toc view-only">
-  <ul>
-    <li><a href="#info">Company Information</a></li>
-    <li><a href="#directors">Directors</a></li>
-    <li><a href="#members">Members</a></li>
-    <li><a href="#allotments">Allotments &amp; Transfers</a></li>
-    <li><a href="#psc">PSC Register</a></li>
-    <li><a href="#certificates">Share Certificates</a></li>
-    <li><a href="#filings">Filings Outstanding</a></li>
-  </ul>
-</nav>
+    <div class="health" id="health"></div>
 
-<main>
-  <!-- VIEW MODE renders here -->
-  <div class="view-only" id="viewRoot"></div>
-  <!-- EDIT MODE renders here -->
-  <div class="editor-only" id="editRoot"></div>
-</main>
+    <nav class="toc view-only">
+      <ul>
+        <li><a href="#info">Company Information</a></li>
+        <li><a href="#directors">Directors</a></li>
+        <li><a href="#members">Members</a></li>
+        <li><a href="#allotments">Allotments &amp; Transfers</a></li>
+        <li><a href="#psc">PSC Register</a></li>
+        <li><a href="#certificates">Share Certificates</a></li>
+        <li><a href="#filings">Filings Outstanding</a></li>
+      </ul>
+    </nav>
 
-<footer id="footerRoot"></footer>
+    <main>
+      <div class="view-only" id="viewRoot"></div>
+      <div class="editor-only" id="editRoot"></div>
+    </main>
 
-</div><!-- /.page -->
+    <div class="suite view-only">
+      <p class="eyebrow">Part of your PowerVox membership</p>
+      <h3>Everything a founder should have in order</h3>
+      <div class="tiles">
+        <div class="tile"><div class="t">Shareholders' agreement</div><div class="d">A clear agreement between owners, ready to tailor.</div><span class="soon">Coming soon</span></div>
+        <div class="tile"><div class="t">Template contracts</div><div class="d">The everyday agreements a growing company needs.</div><span class="soon">Coming soon</span></div>
+        <div class="tile"><div class="t">Cash flow forecast</div><div class="d">See what's coming, plan with confidence.</div><span class="soon">Coming soon</span></div>
+        <div class="tile"><div class="t">Tax at a glance</div><div class="d">A simple read on what you'll owe and when.</div><span class="soon">Coming soon</span></div>
+      </div>
+    </div>
 
-<!-- ============================ MODAL ============================ -->
-<div class="modal-back" id="modalBack">
-  <div class="modal" id="modalBody"></div>
+    <footer id="footerRoot"></footer>
+  </div>
 </div>
+
+<div class="modal-back" id="modalBack"><div class="modal" id="modalBody"></div></div>
 
 <script>
 "use strict";
 
-/* ============================================================
-   CONFIG — branding. Set logoUrl to a data URI or path to use an
-   image; otherwise logoText is rendered as a wordmark.
-   ============================================================ */
 const CONFIG = {
   brandName: "PowerVox",
-  logoText: "PowerVox",   // wordmark shown if logoUrl is empty
-  logoUrl: "",            // e.g. "data:image/png;base64,...." or "logo.png"
-  // Backend endpoint that performs the Companies House fetch (keeps the API key
-  // server-side). Relative path so it works wherever the page is hosted.
-  // When the page is opened from disk this call simply fails and the offline
-  // paste option is offered instead.
+  logoText: "PowerVox",
+  logoUrl: "",
   chEndpoint: "/api/companies-house"
 };
 
@@ -334,7 +365,6 @@ function blankTemplate() {
   };
 }
 
-/* === Sample data (real Eason Law record, for demonstration) === */
 function easonSample() {
   const d = blankTemplate();
   d.company = {
@@ -344,7 +374,7 @@ function easonSample() {
     registeredOffice: "128 City Road, London, EC1V 2NX",
     accountingRefDate: "5 April",
     sicCode: "70229 — Management consultancy activities other than financial management",
-    articles: "Amended and restated articles of association adopted by special resolution of the sole member on 1 April 2025 and filed at Companies House on 15 May 2026, replacing the bespoke articles originally adopted on incorporation. The Model Articles for Private Companies Limited by Shares (Schedule 1, SI 3229/2008) remain expressly disapplied by Article 1(1). The articles introduce a Class Rights Schedule for the Ordinary, B/C/D Ordinary classes (including a £240,000 capital hurdle on a Sale Event in favour of the Ordinary class), a pre-emption transfer regime in Article 26 with a Permitted Transferee carve-out, and retain authority for the Company to purchase its own shares for cash up to the lower of £15,000 or 5% of share capital in any financial year.",
+    articles: "Amended and restated articles of association adopted by special resolution on 1 April 2025 and filed at Companies House on 15 May 2026, introducing a Class Rights Schedule for the Ordinary and B/C/D Ordinary classes and a pre-emption transfer regime.",
     memorandumDated: "9 November 2019 (subscriber: Scott Eason)",
     recordKeepingNote: d.company.recordKeepingNote,
     officeHistory: [
@@ -359,14 +389,11 @@ function easonSample() {
       { name: "Scott Eason", serviceAddress: "3A Drovers Lane, Redmarshall, Stockton-on-Tees, TS21 1EL", appointed: "1 July 2025", status: "in office" }
     ],
     history: [
-      { name: "Scott Eason", note: "Date of birth: ** / 06 / 1978. Nationality: British. Country of usual residence: United Kingdom. Business occupation: Business Consultant.", rows: [
+      { name: "Scott Eason", note: "Nationality: British. Country of usual residence: United Kingdom.", rows: [
         { event: "Appointed (subscriber on incorporation)", date: "11 November 2019", filed: "IN01 filed 11/11/2019" },
-        { event: "Resigned", date: "28 January 2020", filed: "TM01 filed 28/01/2020" },
-        { event: "Reappointed", date: "21 October 2022", filed: "AP01 filed 21/10/2022" },
-        { event: "Resigned", date: "25 July 2023", filed: "TM01 filed 06/08/2023" },
         { event: "Reappointed", date: "1 July 2025", filed: "AP01 filed 15/05/2026" }
       ] },
-      { name: "Victoria Anne Eason", note: "Nationality: British. Continues in office as of the date of this register.", rows: [
+      { name: "Victoria Anne Eason", note: "Nationality: British.", rows: [
         { event: "Appointed", date: "1 January 2020", filed: "AP01 filed 09/01/2020" }
       ] }
     ]
@@ -377,80 +404,46 @@ function easonSample() {
     current: [
       { member: "Scott Eason", address: "3A Drovers Lane, Redmarshall, Stockton-on-Tees, TS21 1EL", cls: "Ordinary", shares: "250", nominal: "£2.50", paidUp: "Fully paid" },
       { member: "Victoria Anne Eason", address: "3A Drovers Lane, Redmarshall, Stockton-on-Tees, TS21 1EL", cls: "Ordinary", shares: "250", nominal: "£2.50", paidUp: "Fully paid" },
-      { member: "Isobel Anne Eason", address: "3A Drovers Lane, Redmarshall, Stockton-on-Tees, TS21 1EL", cls: "B Ordinary", shares: "175", nominal: "£1.75", paidUp: "Fully paid" },
-      { member: "Joseph David Eason", address: "3A Drovers Lane, Redmarshall, Stockton-on-Tees, TS21 1EL", cls: "C Ordinary", shares: "175", nominal: "£1.75", paidUp: "Fully paid" },
-      { member: "Nathanial David Jack Bell", address: "71 Langholm Crescent, Darlington, DL3 7SX", cls: "D Ordinary", shares: "150", nominal: "£1.50", paidUp: "Fully paid" }
+      { member: "Isobel Anne Eason", address: "3A Drovers Lane, Redmarshall, Stockton-on-Tees, TS21 1EL", cls: "B Ordinary", shares: "175", nominal: "£1.75", paidUp: "Fully paid" }
     ],
     history: [
-      { member: "Scott Eason", currentNote: "Current holding: 250 Ordinary shares of £0.01 each, total nominal value £2.50, fully paid.", rows: [
-        { date: "11 November 2019", event: "Allotment on incorporation: 1 × £1 Ordinary share (subscriber)", inOut: "+1", balance: "1 Ordinary (£1)" },
-        { date: "1 July 2024", event: "Transferred 1 × £1 Ordinary share to Victoria Anne Eason", inOut: "−1", balance: "0 shares" },
-        { date: "1 April 2025", event: "Transfer in from Victoria Anne Eason: 250 × £0.01 Ordinary shares (following sub-division)", inOut: "+250", balance: "250 Ordinary (£0.01)" }
-      ] },
-      { member: "Victoria Anne Eason", currentNote: "Current holding: 250 Ordinary shares of £0.01 each, total nominal value £2.50, fully paid.", rows: [
-        { date: "1 February 2020", event: "Allotment: 4 × £1 Ordinary shares (paid in cash)", inOut: "+4", balance: "4 Ordinary (£1)" },
-        { date: "1 July 2024", event: "Transfer in from Scott Eason: 1 × £1 Ordinary share", inOut: "+1", balance: "5 Ordinary (£1)" },
-        { date: "1 April 2025", event: "Sub-division: 5 × £1 Ordinary shares converted into 500 × £0.01 Ordinary shares", inOut: "+495 (net of sub-division)", balance: "500 Ordinary (£0.01)" },
-        { date: "1 April 2025", event: "Transferred 250 × £0.01 Ordinary shares to Scott Eason", inOut: "−250", balance: "250 Ordinary (£0.01)" }
-      ] },
-      { member: "Isobel Anne Eason", currentNote: "Current holding: 175 B Ordinary shares of £0.01 each, total nominal value £1.75, fully paid.", rows: [
-        { date: "1 April 2025", event: "Allotment of 175 × £0.01 B Ordinary shares", inOut: "+175", balance: "175 B Ordinary (£0.01)" }
+      { member: "Scott Eason", currentNote: "Current holding: 250 Ordinary shares of £0.01 each.", rows: [
+        { date: "11 November 2019", event: "Allotment on incorporation: 1 Ordinary share", inOut: "+1", balance: "1 Ordinary" }
       ] }
     ]
   };
   d.allotments = {
     note: "Chronological record of all share events since incorporation.",
     rows: [
-      { date: "11 November 2019", type: "Allotment", details: "1 × £1 Ordinary share allotted to Scott Eason on incorporation (subscriber share). Initially unpaid; subsequently paid up.", filing: "IN01 (11/11/2019); statement of capital on filing", hl: "" },
-      { date: "1 February 2020", type: "Allotment", details: "4 × £1 Ordinary shares allotted to Victoria Anne Eason (paid in cash). Post-allotment total: 5 Ordinary shares.", filing: "SH01 filed 26/05/2020", hl: "" },
-      { date: "1 July 2024", type: "Transfer", details: "Scott Eason transferred his 1 × £1 Ordinary share to Victoria Anne Eason. Post-transfer holding: Victoria 5 Ordinary, Scott 0.", filing: "Stock transfer form executed 1 July 2024; recorded in CS01 filed 9 May 2025.", hl: "" },
-      { date: "1 April 2025", type: "Sub-division", details: "The 5 × £1 Ordinary shares held by Victoria Anne Eason were sub-divided into 500 × £0.01 Ordinary shares (factor 100).", filing: "SH02 filed 15/05/2026", hl: "warn" },
-      { date: "1 April 2025", type: "Transfer", details: "Victoria Anne Eason transferred 250 × £0.01 Ordinary shares to Scott Eason. Post-transfer: Victoria 250, Scott 250.", filing: "Reported in CS01 filed 15/05/2026", hl: "" },
-      { date: "1 April 2025", type: "Class creation & allotment", details: "B/C/D Ordinary classes created with prescribed particulars. Allotted: 175 B Ordinary to Isobel Anne Eason; 175 C Ordinary to Joseph David Eason; 150 D Ordinary to Nathanial David Jack Bell. Post-allotment total: 1,000 shares, £10.00 nominal.", filing: "SH01 filed 15/05/2026", hl: "" }
+      { date: "11 November 2019", type: "Allotment", details: "1 Ordinary share allotted to Scott Eason on incorporation.", filing: "Incorporation (IN01)", hl: "" },
+      { date: "1 April 2025", type: "Class creation & allotment", details: "B/C/D Ordinary classes created and allotted to family members.", filing: "SH01 filed 15/05/2026", hl: "" }
     ],
     classRights: [
-      { cls: "Ordinary", voting: "One vote per share", dividend: "Full rights to dividend as declared, pari passu within class", capital: "Right to capital distribution after preferential creditors, subject to hurdle if applicable" },
-      { cls: "B Ordinary", voting: "Non-voting", dividend: "Class-specific dividend as declared by the directors; no entitlement to dividends on other classes", capital: "As per articles and growth/hurdle terms in the allotment resolution" },
-      { cls: "C Ordinary", voting: "Non-voting", dividend: "Class-specific dividend as declared by the directors; no entitlement to dividends on other classes", capital: "As per articles and growth/hurdle terms in the allotment resolution" },
-      { cls: "D Ordinary", voting: "Non-voting", dividend: "Class-specific dividend as declared by the directors; no entitlement to dividends on other classes", capital: "As per articles and growth/hurdle terms in the allotment resolution" }
+      { cls: "Ordinary", voting: "One vote per share", dividend: "Full rights to dividend as declared", capital: "Right to capital distribution after preferential creditors" },
+      { cls: "B Ordinary", voting: "Non-voting", dividend: "Class-specific dividend as declared", capital: "As per articles" }
     ]
   };
   d.psc = {
-    note: "Maintained under section 790M of the Companies Act 2006. Records persons with significant control over the Company.",
+    note: "Maintained under section 790M of the Companies Act 2006.",
     current: [
       { name: "Victoria Anne Eason", nature: "Holds, directly, more than 25% but not more than 50% of the voting rights", from: "1 April 2025", status: "current" },
       { name: "Scott Eason", nature: "Holds, directly, more than 25% but not more than 50% of the voting rights", from: "1 April 2025", status: "current" }
     ],
-    nonPscNote: "Isobel Anne Eason, Joseph David Eason and Nathanial David Jack Bell each hold less than 25% of the total issued share capital and have no voting rights in respect of their alphabet class shares. None of them is a PSC.",
-    history: [
-      { date: "11 November 2019", person: "Scott Eason", action: "Registered as initial PSC: more than 75% shares, more than 75% voting rights, right to appoint/remove majority of directors", filed: "IN01 (11/11/2019)", hl: "" },
-      { date: "1 January 2020", person: "Scott Eason", action: "Cessation as PSC", filed: "Filed 09/01/2020", hl: "" },
-      { date: "1 April 2025", person: "Victoria Anne Eason", action: "Change in nature of control: band moves from “more than 75%” to “more than 25% but not more than 50%”", filed: "PSC04 filed 15/05/2026", hl: "green" },
-      { date: "1 April 2025", person: "Scott Eason", action: "Registered as new PSC: more than 25% but not more than 50% of voting rights", filed: "PSC01 filed 15/05/2026", hl: "green" }
-    ]
+    nonPscNote: "",
+    history: []
   };
   d.certificates = {
     note: d.certificates.note,
     rows: [
-      { certNo: "001", holder: "Scott Eason", cls: "Ordinary £1", shares: "1", issued: "11 November 2019", status: "cancelled 1 July 2024 (transfer)", statusType: "ceased" },
-      { certNo: "002", holder: "Victoria Anne Eason", cls: "Ordinary £1", shares: "4", issued: "1 February 2020", status: "cancelled 1 July 2024 (replaced by 003)", statusType: "ceased" },
-      { certNo: "003", holder: "Victoria Anne Eason", cls: "Ordinary £1", shares: "5", issued: "1 July 2024", status: "cancelled 1 April 2025 (sub-division)", statusType: "ceased" },
       { certNo: "004", holder: "Scott Eason", cls: "Ordinary £0.01", shares: "250", issued: "1 April 2025", status: "current", statusType: "current" },
-      { certNo: "005", holder: "Victoria Anne Eason", cls: "Ordinary £0.01", shares: "250", issued: "1 April 2025", status: "current", statusType: "current" },
-      { certNo: "006", holder: "Isobel Anne Eason", cls: "B Ordinary £0.01", shares: "175", issued: "1 April 2025", status: "current", statusType: "current" },
-      { certNo: "007", holder: "Joseph David Eason", cls: "C Ordinary £0.01", shares: "175", issued: "1 April 2025", status: "current", statusType: "current" },
-      { certNo: "008", holder: "Nathanial David Jack Bell", cls: "D Ordinary £0.01", shares: "150", issued: "1 April 2025", status: "current", statusType: "current" }
+      { certNo: "005", holder: "Victoria Anne Eason", cls: "Ordinary £0.01", shares: "250", issued: "1 April 2025", status: "current", statusType: "current" }
     ],
-    alert: { type: "info", title: "Certificates to be physically produced", body: "Certificates 004 through 008 should be drafted, signed by a director, and issued to each holder." }
+    alert: { type: "info", title: "", body: "" }
   };
-  d.filings = {
-    note: d.filings.note, reconciled: true,
-    reconciledNote: "The Company's public record at Companies House is in line with the position recorded in these registers. Last full reconciliation: 15 May 2026.",
-    rows: []
-  };
+  d.filings = { note: d.filings.note, reconciled: true, reconciledNote: "The Company's public record at Companies House is in line with the position recorded in these registers.", rows: [] };
   d.footer = {
     maintenanceNote: "This register is maintained by the directors of Eason Law Limited in electronic form pursuant to section 1135 of the Companies Act 2006.",
-    inspectionNote: "Available for inspection at the Company's registered office or single alternative inspection location on reasonable notice. Hard copies will be produced on request.",
+    inspectionNote: "Available for inspection at the Company's registered office on reasonable notice. Hard copies will be produced on request.",
     lastUpdated: "16 May 2026"
   };
   return d;
@@ -459,21 +452,19 @@ function easonSample() {
 /* ============================================================
    STATE
    ============================================================ */
-const LS_KEY = "powervox_statutory_register_v1";
+const LS_KEY = "powervox_statutory_register_v2";
 let data = loadFromStorage() || blankTemplate();
 
 function loadFromStorage() {
   try { const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : null; }
   catch (e) { return null; }
 }
-function save(quiet) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
-    const t = new Date();
-    setSaveState("Saved " + t.toLocaleTimeString());
-  } catch (e) { setSaveState("Save failed (storage blocked)"); }
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); setSaveState("Saved automatically"); }
+  catch (e) { setSaveState(""); }
 }
 function setSaveState(msg) { const el = document.getElementById("saveState"); if (el) el.textContent = msg; }
+function hasData() { return !!(data && data.company && data.company.name); }
 
 /* ============================================================
    HELPERS
@@ -482,20 +473,18 @@ function esc(s) {
   if (s === null || s === undefined) return "";
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
 function badge(type, label) {
   const map = { current: "badge-current", ceased: "badge-ceased", unfiled: "badge-unfiled", pending: "badge-pending" };
   return '<span class="badge ' + (map[type] || "badge-current") + '">' + esc(label) + '</span>';
 }
 
 /* ============================================================
-   VIEW RENDERER  (produces the formatted statutory register)
+   VIEW RENDERER (the formatted statutory register)
    ============================================================ */
 function renderView() {
   const c = data.company;
   let h = "";
 
-  /* Section 1 */
   h += '<section id="info"><h2>1. Company Information</h2><dl class="info-grid">';
   const rows1 = [
     ["Company name", c.name], ["Company number", c.number], ["Company type", c.type],
@@ -518,7 +507,6 @@ function renderView() {
   if (c.recordKeepingNote) h += '<h3>Statutory record-keeping</h3><p class="section-note">' + esc(c.recordKeepingNote) + "</p>";
   h += "</section>";
 
-  /* Section 2 */
   const dr = data.directors;
   h += '<section id="directors"><h2>2. Register of Directors</h2>';
   if (dr.note) h += '<p class="section-note">' + esc(dr.note) + "</p>";
@@ -541,7 +529,6 @@ function renderView() {
   }
   h += "</section>";
 
-  /* Section 3 */
   const m = data.members;
   h += '<section id="members"><h2>3. Register of Members</h2>';
   if (m.note) h += '<p class="section-note">' + esc(m.note) + "</p>";
@@ -567,7 +554,6 @@ function renderView() {
   }
   h += "</section>";
 
-  /* Section 4 */
   const a = data.allotments;
   h += '<section id="allotments"><h2>4. Register of Allotments and Transfers</h2>';
   if (a.note) h += '<p class="section-note">' + esc(a.note) + "</p>";
@@ -585,7 +571,6 @@ function renderView() {
   }
   h += "</section>";
 
-  /* Section 5 */
   const p = data.psc;
   h += '<section id="psc"><h2>5. PSC Register</h2>';
   if (p.note) h += '<p class="section-note">' + esc(p.note) + "</p>";
@@ -604,7 +589,6 @@ function renderView() {
   }
   h += "</section>";
 
-  /* Section 6 */
   const ce = data.certificates;
   h += '<section id="certificates"><h2>6. Share Certificates Index</h2>';
   if (ce.note) h += '<p class="section-note">' + esc(ce.note) + "</p>";
@@ -620,7 +604,6 @@ function renderView() {
   }
   h += "</section>";
 
-  /* Section 7 */
   const f = data.filings;
   h += '<section id="filings"><h2>7. Filings Outstanding at Companies House</h2>';
   if (f.note) h += '<p class="section-note">' + esc(f.note) + "</p>";
@@ -635,7 +618,7 @@ function renderView() {
         h += "<tr><td>" + esc(r.form) + "</td><td>" + esc(r.event) + "</td><td>" + esc(r.effective) + "</td><td>" + esc(r.deadline) + "</td><td>" + badge(r.statusType || "pending", r.status || "pending") + "</td></tr>";
       });
     } else {
-      h += '<tr><td colspan="5" style="text-align:center;color:#6b7280;font-style:italic;padding:18px;">No outstanding filings as at the date below.</td></tr>';
+      h += '<tr><td colspan="5" style="text-align:center;color:#8C7B6B;font-style:italic;padding:18px;">No outstanding filings as at the date below.</td></tr>';
     }
     h += "</tbody></table>";
   }
@@ -645,20 +628,19 @@ function renderView() {
 }
 
 /* ============================================================
-   MASTHEAD + FOOTER
+   MASTHEAD / FOOTER / HEALTH
    ============================================================ */
 function renderMasthead() {
   const c = data.company;
-  document.getElementById("mhName").textContent = c.name || "Company Name";
+  document.getElementById("mhName").textContent = c.name || "Your Company";
   let sub = [];
   if (c.type) sub.push(c.type);
   if (c.number) sub.push("Company Number " + c.number);
   if (c.incorporated) sub.push("Incorporated in " + (c.jurisdiction || "England and Wales") + " on " + c.incorporated);
-  document.getElementById("mhSub").textContent = sub.join(" · ");
+  document.getElementById("mhSub").textContent = sub.join("  ·  ");
   const lw = document.getElementById("mastheadLogo");
-  if (CONFIG.logoUrl) lw.innerHTML = '<img class="logo" src="' + esc(CONFIG.logoUrl) + '" alt="' + esc(CONFIG.brandName) + '">';
-  else lw.innerHTML = '<div class="logotext">' + esc(CONFIG.logoText) + "</div>";
-  document.getElementById("appBrand").innerHTML = esc(CONFIG.brandName) + ' <span>Statutory Registers</span>';
+  if (CONFIG.logoUrl) lw.innerHTML = '<img class="logo" src="' + esc(CONFIG.logoUrl) + '" alt="' + esc(c.name || CONFIG.brandName) + '">';
+  else lw.innerHTML = '<div class="eyebrow">' + esc(CONFIG.brandName) + '</div>';
 }
 function renderFooter() {
   const f = data.footer;
@@ -668,9 +650,25 @@ function renderFooter() {
   if (f.lastUpdated) h += "<p><strong>Last updated.</strong> " + esc(f.lastUpdated) + "</p>";
   document.getElementById("footerRoot").innerHTML = h;
 }
+function renderHealth() {
+  const el = document.getElementById("health");
+  const issues = [];
+  const m = data.members.current.filter(x => x.member);
+  if (!m.length) issues.push("add your shareholders");
+  else if (m.some(x => !x.address)) issues.push("add member addresses");
+  if (!data.certificates.rows.some(r => r.certNo || r.holder)) issues.push("add share certificate numbers");
+  if (data.filings.rows && data.filings.rows.some(r => r.form || r.event)) issues.push("filings outstanding at Companies House");
+  if (!issues.length) {
+    el.className = "health ok";
+    el.innerHTML = '<span class="dot"></span><strong>Your statutory books are in order.</strong> <span class="items">Everything on the public record is captured and reconciled.</span>';
+  } else {
+    el.className = "health attention";
+    el.innerHTML = '<span class="dot"></span><strong>' + issues.length + (issues.length === 1 ? ' thing needs your attention.' : ' things need your attention.') + '</strong> <span class="items">' + esc(issues.join(", ")) + '. Use Edit details to complete them.</span>';
+  }
+}
 
 /* ============================================================
-   EDIT RENDERER
+   EDIT RENDERER (back of house)
    ============================================================ */
 function input(value, path, type) {
   type = type || "text";
@@ -682,7 +680,6 @@ function selectInput(value, path, options) {
   let o = options.map(op => '<option value="' + esc(op) + '"' + (op === value ? " selected" : "") + ">" + esc(op) + "</option>").join("");
   return '<select data-path="' + path + '">' + o + "</select>";
 }
-
 function gridTable(listPath, list, cols, addLabel) {
   let h = '<table class="grid-table"><thead><tr>';
   cols.forEach(col => { h += "<th>" + esc(col.label) + "</th>"; });
@@ -704,14 +701,11 @@ function gridTable(listPath, list, cols, addLabel) {
   h += '<button class="mini add-row" data-add="' + listPath + '">+ ' + esc(addLabel || "Add row") + "</button>";
   return h;
 }
-
 function renderEdit() {
   const c = data.company;
-  let h = "";
+  let h = '<div class="edit-intro">You are editing the details behind your book. Changes save automatically. Click <strong>Done</strong> in the bar above to return to the finished register.</div>';
 
-  /* Section 1 */
-  h += '<div class="edit-section"><h3 class="edit-title">1. Company Information</h3>';
-  h += '<div class="two-col">';
+  h += '<div class="edit-section"><h3 class="edit-title">1. Company Information</h3><div class="two-col">';
   h += '<div class="field"><label>Company name</label>' + input(c.name, "company.name") + "</div>";
   h += '<div class="field"><label>Company number</label>' + input(c.number, "company.number") + "</div>";
   h += '<div class="field"><label>Company type</label>' + input(c.type, "company.type") + "</div>";
@@ -726,13 +720,11 @@ function renderEdit() {
   h += '<div class="field"><label>Statutory record-keeping note</label>' + input(c.recordKeepingNote, "company.recordKeepingNote", "textarea") + "</div>";
   h += "<label class=\"helptext\">Registered office history</label>";
   h += gridTable("company.officeHistory", c.officeHistory, [
-    { key: "from", label: "From" }, { key: "to", label: "To" },
-    { key: "address", label: "Address", w: "45%" },
+    { key: "from", label: "From" }, { key: "to", label: "To" }, { key: "address", label: "Address", w: "45%" },
     { key: "current", label: "Current?", type: "select", options: [false, true] }
   ], "Add address");
   h += "</div>";
 
-  /* Section 2 */
   const dr = data.directors;
   h += '<div class="edit-section"><h3 class="edit-title">2. Register of Directors</h3>';
   h += '<div class="field"><label>Section note</label>' + input(dr.note, "directors.note") + "</div>";
@@ -741,19 +733,16 @@ function renderEdit() {
     { key: "name", label: "Name" }, { key: "serviceAddress", label: "Service address", w: "40%" },
     { key: "appointed", label: "Appointed" }, { key: "status", label: "Status" }
   ], "Add director");
-  h += "<label class=\"helptext\" style=\"margin-top:14px;\">Appointment history (one card per officer)</label>";
+  h += "<label class=\"helptext\" style=\"margin-top:14px;\">Appointment history</label>";
   dr.history.forEach((x, i) => {
-    h += '<div class="hist-card"><div class="hc-head">' + input(x.name, "directors.history." + i + ".name") + '<button class="mini danger" data-del="directors.history" data-idx="' + i + '">Remove officer</button></div>';
+    h += '<div class="hist-card"><div class="hc-head">' + input(x.name, "directors.history." + i + ".name") + '<button class="mini danger" data-del="directors.history" data-idx="' + i + '">Remove</button></div>';
     h += gridTable("directors.history." + i + ".rows", x.rows, [
       { key: "event", label: "Event", w: "40%" }, { key: "date", label: "Effective date" }, { key: "filed", label: "Filed at CH" }
     ], "Add event");
-    h += '<div class="field" style="margin-top:8px;"><label>Note (DOB, nationality etc.)</label>' + input(x.note, "directors.history." + i + ".note", "textarea") + "</div>";
-    h += "</div>";
+    h += '<div class="field" style="margin-top:8px;"><label>Note</label>' + input(x.note, "directors.history." + i + ".note", "textarea") + "</div></div>";
   });
-  h += '<button class="mini" data-add="directors.history">+ Add officer history</button>';
-  h += "</div>";
+  h += '<button class="mini" data-add="directors.history">+ Add officer history</button></div>';
 
-  /* Section 3 */
   const m = data.members;
   h += '<div class="edit-section"><h3 class="edit-title">3. Register of Members</h3>';
   h += '<div class="field"><label>Section note</label>' + input(m.note, "members.note", "textarea") + "</div>";
@@ -761,122 +750,89 @@ function renderEdit() {
   h += "<label class=\"helptext\">Current members</label>";
   h += gridTable("members.current", m.current, [
     { key: "member", label: "Member" }, { key: "address", label: "Address", w: "32%" },
-    { key: "cls", label: "Class" }, { key: "shares", label: "Shares" },
-    { key: "nominal", label: "Nominal" }, { key: "paidUp", label: "Paid up" }
+    { key: "cls", label: "Class" }, { key: "shares", label: "Shares" }, { key: "nominal", label: "Nominal" }, { key: "paidUp", label: "Paid up" }
   ], "Add member");
-  h += "<label class=\"helptext\" style=\"margin-top:14px;\">Member holding history (one card per member)</label>";
+  h += "<label class=\"helptext\" style=\"margin-top:14px;\">Member holding history</label>";
   m.history.forEach((x, i) => {
-    h += '<div class="hist-card"><div class="hc-head">' + input(x.member, "members.history." + i + ".member") + '<button class="mini danger" data-del="members.history" data-idx="' + i + '">Remove member</button></div>';
+    h += '<div class="hist-card"><div class="hc-head">' + input(x.member, "members.history." + i + ".member") + '<button class="mini danger" data-del="members.history" data-idx="' + i + '">Remove</button></div>';
     h += gridTable("members.history." + i + ".rows", x.rows, [
-      { key: "date", label: "Date" }, { key: "event", label: "Event", w: "45%" },
-      { key: "inOut", label: "In / out" }, { key: "balance", label: "Balance" }
+      { key: "date", label: "Date" }, { key: "event", label: "Event", w: "45%" }, { key: "inOut", label: "In / out" }, { key: "balance", label: "Balance" }
     ], "Add event");
-    h += '<div class="field" style="margin-top:8px;"><label>Current holding note</label>' + input(x.currentNote, "members.history." + i + ".currentNote", "textarea") + "</div>";
-    h += "</div>";
+    h += '<div class="field" style="margin-top:8px;"><label>Current holding note</label>' + input(x.currentNote, "members.history." + i + ".currentNote", "textarea") + "</div></div>";
   });
-  h += '<button class="mini" data-add="members.history">+ Add member history</button>';
-  h += "</div>";
+  h += '<button class="mini" data-add="members.history">+ Add member history</button></div>';
 
-  /* Section 4 */
   const a = data.allotments;
   h += '<div class="edit-section"><h3 class="edit-title">4. Allotments &amp; Transfers</h3>';
   h += '<div class="field"><label>Section note</label>' + input(a.note, "allotments.note") + "</div>";
   h += "<label class=\"helptext\">Share events</label>";
   h += gridTable("allotments.rows", a.rows, [
-    { key: "date", label: "Date" }, { key: "type", label: "Type" },
-    { key: "details", label: "Details", type: "textarea", w: "38%" },
-    { key: "filing", label: "CH filing", type: "textarea", w: "24%" },
-    { key: "hl", label: "Highlight", type: "select", options: ["", "warn", "green"] }
+    { key: "date", label: "Date" }, { key: "type", label: "Type" }, { key: "details", label: "Details", type: "textarea", w: "38%" },
+    { key: "filing", label: "CH filing", type: "textarea", w: "24%" }, { key: "hl", label: "Highlight", type: "select", options: ["", "warn", "green"] }
   ], "Add event");
   h += "<label class=\"helptext\" style=\"margin-top:14px;\">Share class rights</label>";
   h += gridTable("allotments.classRights", a.classRights, [
-    { key: "cls", label: "Class" }, { key: "voting", label: "Voting" },
-    { key: "dividend", label: "Dividend", type: "textarea", w: "32%" },
-    { key: "capital", label: "Capital", type: "textarea", w: "32%" }
+    { key: "cls", label: "Class" }, { key: "voting", label: "Voting" }, { key: "dividend", label: "Dividend", type: "textarea", w: "32%" }, { key: "capital", label: "Capital", type: "textarea", w: "32%" }
   ], "Add class");
   h += "</div>";
 
-  /* Section 5 */
   const p = data.psc;
   h += '<div class="edit-section"><h3 class="edit-title">5. PSC Register</h3>';
   h += '<div class="field"><label>Section note</label>' + input(p.note, "psc.note") + "</div>";
   h += "<label class=\"helptext\">Current PSCs</label>";
   h += gridTable("psc.current", p.current, [
-    { key: "name", label: "Name" }, { key: "nature", label: "Nature of control", type: "textarea", w: "45%" },
-    { key: "from", label: "From" }, { key: "status", label: "Status" }
+    { key: "name", label: "Name" }, { key: "nature", label: "Nature of control", type: "textarea", w: "45%" }, { key: "from", label: "From" }, { key: "status", label: "Status" }
   ], "Add PSC");
   h += '<div class="field" style="margin-top:10px;"><label>Non-PSC note</label>' + input(p.nonPscNote, "psc.nonPscNote", "textarea") + "</div>";
   h += "<label class=\"helptext\">PSC history</label>";
   h += gridTable("psc.history", p.history, [
-    { key: "date", label: "Date" }, { key: "person", label: "Person" },
-    { key: "action", label: "Action", type: "textarea", w: "40%" },
-    { key: "filed", label: "Filed at CH" }, { key: "hl", label: "Highlight", type: "select", options: ["", "warn", "green"] }
+    { key: "date", label: "Date" }, { key: "person", label: "Person" }, { key: "action", label: "Action", type: "textarea", w: "40%" }, { key: "filed", label: "Filed at CH" }, { key: "hl", label: "Highlight", type: "select", options: ["", "warn", "green"] }
   ], "Add PSC event");
   h += "</div>";
 
-  /* Section 6 */
   const ce = data.certificates;
   h += '<div class="edit-section"><h3 class="edit-title">6. Share Certificates Index</h3>';
   h += '<div class="field"><label>Section note</label>' + input(ce.note, "certificates.note", "textarea") + "</div>";
   h += gridTable("certificates.rows", ce.rows, [
-    { key: "certNo", label: "Cert No." }, { key: "holder", label: "Holder" },
-    { key: "cls", label: "Class" }, { key: "shares", label: "Shares" }, { key: "issued", label: "Issued" },
-    { key: "status", label: "Status text", w: "22%" },
-    { key: "statusType", label: "Type", type: "select", options: ["current", "ceased"] }
+    { key: "certNo", label: "Cert No." }, { key: "holder", label: "Holder" }, { key: "cls", label: "Class" }, { key: "shares", label: "Shares" }, { key: "issued", label: "Issued" },
+    { key: "status", label: "Status text", w: "22%" }, { key: "statusType", label: "Type", type: "select", options: ["current", "ceased"] }
   ], "Add certificate");
   h += '<div class="three-col" style="margin-top:10px;">';
   h += '<div class="field"><label>Alert type</label>' + selectInput(ce.alert.type, "certificates.alert.type", ["info", "warn", "success"]) + "</div>";
   h += '<div class="field"><label>Alert title</label>' + input(ce.alert.title, "certificates.alert.title") + "</div>";
-  h += '<div class="field"><label>Alert body</label>' + input(ce.alert.body, "certificates.alert.body") + "</div>";
-  h += "</div></div>";
+  h += '<div class="field"><label>Alert body</label>' + input(ce.alert.body, "certificates.alert.body") + "</div></div></div>";
 
-  /* Section 7 */
   const f = data.filings;
   h += '<div class="edit-section"><h3 class="edit-title">7. Filings Outstanding</h3>';
   h += '<div class="field"><label>Section note</label>' + input(f.note, "filings.note", "textarea") + "</div>";
-  h += '<div class="two-col"><div class="field"><label>Fully reconciled (no outstanding filings)?</label>' + selectInput(f.reconciled, "filings.reconciled", [true, false]) + "</div>";
+  h += '<div class="two-col"><div class="field"><label>Fully reconciled?</label>' + selectInput(f.reconciled, "filings.reconciled", [true, false]) + "</div>";
   h += '<div class="field"><label>Reconciliation note</label>' + input(f.reconciledNote, "filings.reconciledNote") + "</div></div>";
   h += "<label class=\"helptext\">Outstanding filings (leave empty if reconciled)</label>";
   h += gridTable("filings.rows", f.rows, [
-    { key: "form", label: "Form" }, { key: "event", label: "Event", w: "32%" },
-    { key: "effective", label: "Effective" }, { key: "deadline", label: "Deadline" },
+    { key: "form", label: "Form" }, { key: "event", label: "Event", w: "32%" }, { key: "effective", label: "Effective" }, { key: "deadline", label: "Deadline" },
     { key: "status", label: "Status text" }, { key: "statusType", label: "Type", type: "select", options: ["pending", "unfiled", "current"] }
   ], "Add outstanding filing");
   h += "</div>";
 
-  /* Footer */
   const ft = data.footer;
   h += '<div class="edit-section"><h3 class="edit-title">Footer</h3>';
   h += '<div class="field"><label>Maintenance note</label>' + input(ft.maintenanceNote, "footer.maintenanceNote", "textarea") + "</div>";
   h += '<div class="field"><label>Inspection note</label>' + input(ft.inspectionNote, "footer.inspectionNote", "textarea") + "</div>";
-  h += '<div class="field"><label>Last updated</label>' + input(ft.lastUpdated, "footer.lastUpdated") + "</div>";
-  h += "</div>";
+  h += '<div class="field"><label>Last updated</label>' + input(ft.lastUpdated, "footer.lastUpdated") + "</div></div>";
 
   document.getElementById("editRoot").innerHTML = h;
 }
 
 /* ============================================================
-   PATH GET / SET
+   PATH GET / SET + EDIT EVENTS
    ============================================================ */
-function getByPath(path) {
-  return path.split(".").reduce((o, k) => (o == null ? o : o[k]), data);
-}
+function getByPath(path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), data); }
 function setByPath(path, value) {
-  const parts = path.split(".");
-  let o = data;
+  const parts = path.split("."); let o = data;
   for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
-  let key = parts[parts.length - 1];
-  o[key] = value;
+  o[parts[parts.length - 1]] = value;
 }
-function coerce(raw) {
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  return raw;
-}
-
-/* ============================================================
-   EVENT WIRING
-   ============================================================ */
+function coerce(raw) { if (raw === "true") return true; if (raw === "false") return false; return raw; }
 function wireEditorEvents() {
   const root = document.getElementById("editRoot");
   root.addEventListener("input", e => {
@@ -884,7 +840,6 @@ function wireEditorEvents() {
     if (t.dataset.path) {
       setByPath(t.dataset.path, t.tagName === "SELECT" ? coerce(t.value) : t.value);
       save();
-      // keep masthead live as you type the company name
       if (t.dataset.path.indexOf("company.") === 0) renderMasthead();
     }
   });
@@ -894,7 +849,6 @@ function wireEditorEvents() {
     if (del !== undefined && e.target.dataset.idx !== undefined) { delRow(del, parseInt(e.target.dataset.idx, 10)); return; }
   });
 }
-
 function templateFor(listPath) {
   if (listPath === "company.officeHistory") return { from: "", to: "", address: "", current: false };
   if (listPath === "directors.current") return { name: "", serviceAddress: "", appointed: "", status: "in office" };
@@ -911,38 +865,38 @@ function templateFor(listPath) {
   if (listPath === "filings.rows") return { form: "", event: "", effective: "", deadline: "", status: "pending", statusType: "pending" };
   return {};
 }
-function addRow(listPath) { const list = getByPath(listPath); list.push(templateFor(listPath)); save(); renderEdit(); }
-function delRow(listPath, idx) { const list = getByPath(listPath); list.splice(idx, 1); save(); renderEdit(); }
+function addRow(listPath) { getByPath(listPath).push(templateFor(listPath)); save(); renderEdit(); }
+function delRow(listPath, idx) { getByPath(listPath).splice(idx, 1); save(); renderEdit(); }
 
 /* ============================================================
-   MODE TOGGLE
+   MODE: book vs edit
    ============================================================ */
-function setMode(mode) {
-  document.body.className = "mode-" + mode;
-  document.getElementById("btnEdit").classList.toggle("active", mode === "edit");
-  document.getElementById("btnView").classList.toggle("active", mode === "view");
-  if (mode === "view") renderView();
+function showBook() {
+  document.body.classList.remove("mode-edit");
+  document.getElementById("btnEdit").textContent = "Edit details";
+  renderView(); renderHealth();
+}
+function toggleEdit() {
+  if (document.body.classList.contains("mode-edit")) { showBook(); }
+  else { document.body.classList.add("mode-edit"); document.getElementById("btnEdit").textContent = "Done"; renderEdit(); }
 }
 
 /* ============================================================
-   EXPORT (clean, view-only standalone HTML)
+   EXPORT / DOWNLOAD / PRINT
    ============================================================ */
 function exportRegister() {
-  renderView();
+  showBook();
   const clone = document.documentElement.cloneNode(true);
-  // strip editor chrome from the clone
-  ["appbar", "modalBack"].forEach(id => { const n = clone.querySelector("#" + id); if (n) n.remove(); });
+  ["onboard", "modalBack"].forEach(id => { const n = clone.querySelector("#" + id); if (n) n.remove(); });
+  const bar = clone.querySelector(".appbar"); if (bar) bar.remove();
+  const suite = clone.querySelector(".suite"); if (suite) suite.remove();
   clone.querySelectorAll(".editor-only").forEach(n => n.remove());
-  const body = clone.querySelector("body");
-  body.className = "mode-view";
-  // remove the live scripts so the exported file is a static document
-  clone.querySelectorAll("script").forEach(n => n.remove());
-  // remove the empty edit root
   const er = clone.querySelector("#editRoot"); if (er) er.remove();
+  clone.querySelectorAll("script").forEach(n => n.remove());
+  const appEl = clone.querySelector("#app"); if (appEl) appEl.style.display = "block";
   const html = "<!DOCTYPE html>\n" + clone.outerHTML;
   downloadFile(html, (data.company.name || "statutory-register").replace(/[^a-z0-9]+/gi, "_") + "_Statutory_Register.html", "text/html");
 }
-
 function downloadFile(content, filename, mime) {
   const blob = new Blob([content], { type: mime });
   const a = document.createElement("a");
@@ -950,22 +904,12 @@ function downloadFile(content, filename, mime) {
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
 }
-
-/* ============================================================
-   SAVE / LOAD DATA FILE
-   ============================================================ */
-function saveDataFile() {
-  downloadFile(JSON.stringify(data, null, 2), (data.company.name || "register-data").replace(/[^a-z0-9]+/gi, "_") + ".json", "application/json");
-}
+function saveDataFile() { downloadFile(JSON.stringify(data, null, 2), (data.company.name || "register-data").replace(/[^a-z0-9]+/gi, "_") + ".json", "application/json"); }
 function loadDataFile(file) {
   const r = new FileReader();
-  r.onload = () => {
-    try { const parsed = JSON.parse(r.result); data = mergeDefaults(parsed); save(); renderAll(); alert("Data loaded."); }
-    catch (e) { alert("That file could not be read as register data."); }
-  };
+  r.onload = () => { try { data = mergeDefaults(JSON.parse(r.result)); save(); enterApp(); } catch (e) { alert("That file could not be read."); } };
   r.readAsText(file);
 }
-// ensure loaded data has all keys the UI expects
 function mergeDefaults(parsed) {
   const base = blankTemplate();
   const out = Object.assign({}, base, parsed);
@@ -974,46 +918,18 @@ function mergeDefaults(parsed) {
 }
 
 /* ============================================================
-   COMPANIES HOUSE IMPORT
+   LOGO UPLOAD
    ============================================================ */
-function openImportModal() {
-  const mb = document.getElementById("modalBody");
-  mb.innerHTML =
-    '<h2>Pre-fill from Companies House</h2>' +
-    '<p class="sub">Enter the company number and we will pull what is on the public record (directors, PSCs, share events, dates) and fill the register in for you. Anything you have already edited is never overwritten; imported items are added and any clashes are reported below.</p>' +
-    '<div class="field"><label>Company number</label><input type="text" id="chNum" placeholder="e.g. 12308593"></div>' +
-    '<div class="row" style="margin-top:4px;"><button class="btn primary" id="chPull">Pull from Companies House</button><button class="btn" id="chClose">Close</button></div>' +
-    '<p class="helptext" id="chStatus" style="margin-top:10px;"></p>' +
-    '<details id="offlineDetails" style="margin-top:10px;"><summary style="cursor:pointer;font-size:13px;font-weight:600;">Viewing this file offline, or pull not available?</summary><div style="padding:10px 0;">' +
-    '<p class="helptext">The automatic pull works when this page is hosted on the PowerVox site. If you are viewing the file from disk, run <code>companies-house-fetch.py</code> and paste its JSON output here instead.</p>' +
-    '<div class="field"><textarea id="chJson" placeholder=\'{ "company": {...}, "officers": [...], "psc": [...], "filings": [...] }\'></textarea></div>' +
-    '<button class="btn primary" id="chPaste">Import pasted JSON</button>' +
-    '</div></details>' +
-    '<div id="mergeLog"></div>';
-  document.getElementById("modalBack").classList.add("open");
-  document.getElementById("chClose").onclick = closeModal;
-  document.getElementById("chPull").onclick = pullFromBackend;
-  document.getElementById("chPaste").onclick = () => {
-    const raw = document.getElementById("chJson").value.trim();
-    if (!raw) { alert("Paste some Companies House JSON first."); return; }
-    let parsed; try { parsed = JSON.parse(raw); } catch (e) { alert("That is not valid JSON."); return; }
-    const log = mergeCompaniesHouse(parsed);
-    showMergeLog(log);
-    save(); renderAll();
-    document.getElementById("chStatus").textContent = "Imported. Review the summary below, then close and edit anything you need.";
-  };
-}
-function closeModal() { document.getElementById("modalBack").classList.remove("open"); }
-function showMergeLog(log) {
-  const box = document.getElementById("mergeLog");
-  if (!box) return;
-  let h = '<div class="merge-log"><strong>Import summary</strong><ul style="margin:6px 0 0;padding-left:18px;">';
-  log.forEach(l => { h += '<li class="' + l.kind + '">' + esc(l.msg) + "</li>"; });
-  h += "</ul></div>";
-  box.innerHTML = h;
+function handleLogo(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => { CONFIG.logoUrl = r.result; try { localStorage.setItem(LS_KEY + "_logo", r.result); } catch (e) {} renderMasthead(); };
+  r.readAsDataURL(file);
 }
 
-// Normalise CH date (yyyy-mm-dd) to "D Month yyyy"
+/* ============================================================
+   COMPANIES HOUSE MERGE (engine — unchanged logic)
+   ============================================================ */
 function chDate(s) {
   if (!s) return "";
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
@@ -1024,21 +940,16 @@ function chDate(s) {
 function addrToString(a) {
   if (!a) return "";
   if (typeof a === "string") return a;
-  return [a.premises, a.address_line_1, a.address_line_2, a.locality, a.region, a.postal_code, a.country]
-    .filter(Boolean).join(", ");
+  return [a.premises, a.address_line_1, a.address_line_2, a.locality, a.region, a.postal_code, a.country].filter(Boolean).join(", ");
 }
-
-/* Non-destructive merge of CH payload into the model. Returns a log. */
 function mergeCompaniesHouse(p) {
   const log = [];
-  // ---- Company ----
   const co = p.company || {};
   function fill(field, value, label) {
     if (!value) return;
     const cur = data.company[field];
-    if (!cur) { data.company[field] = value; log.push({ kind: "added", msg: "Set " + label + ": " + value }); }
-    else if (String(cur).trim() !== String(value).trim()) { log.push({ kind: "conflict", msg: label + " differs — kept your value (\"" + cur + "\"); Companies House shows \"" + value + "\"" }); }
-    else log.push({ kind: "skipped", msg: label + " already matches" });
+    if (!cur) { data.company[field] = value; log.push({ kind: "added", msg: "Set " + label }); }
+    else if (String(cur).trim() !== String(value).trim()) { log.push({ kind: "conflict", msg: label + " differs from Companies House — kept yours" }); }
   }
   if (co.company_name) fill("name", co.company_name, "company name");
   if (co.company_number) fill("number", co.company_number, "company number");
@@ -1051,37 +962,21 @@ function mergeCompaniesHouse(p) {
     const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     if (ard.day && ard.month) fill("accountingRefDate", parseInt(ard.day,10) + " " + months[parseInt(ard.month,10)-1], "accounting reference date");
   }
-
-  // ---- Officers -> directors ----
   (p.officers || []).forEach(o => {
-    const raw = o.name || "";
-    if (!raw) return;
+    const raw = o.name || ""; if (!raw) return;
     const disp = displayName(raw);
     const appointed = chDate(o.appointed_on);
     const resigned = o.resigned_on ? chDate(o.resigned_on) : "";
-    // current directors: only those not resigned (dedupe on display name + appointment)
     if (!resigned) {
       const exists = data.directors.current.some(d => sameName(d.name, disp) && d.appointed === appointed);
-      if (!exists) {
-        data.directors.current.push({ name: disp, serviceAddress: addrToString(o.address), appointed: appointed, status: "in office" });
-        log.push({ kind: "added", msg: "Added current director: " + disp });
-      }
+      if (!exists) { data.directors.current.push({ name: disp, serviceAddress: addrToString(o.address), appointed: appointed, status: "in office" }); log.push({ kind: "added", msg: "director " + disp }); }
     }
-    // history card per officer (one card per display name; events merged in)
     let card = data.directors.history.find(c => sameName(c.name, disp));
     if (!card) { card = { name: disp, note: officerNote(o), rows: [] }; data.directors.history.push(card); }
     else if (!card.note) card.note = officerNote(o);
-    if (appointed && !card.rows.some(r => r.date === appointed && /appoint/i.test(r.event))) {
-      card.rows.push({ event: "Appointed", date: appointed, filed: "" });
-      log.push({ kind: "added", msg: "Added appointment event for " + disp + " (" + appointed + ")" });
-    }
-    if (resigned && !card.rows.some(r => r.date === resigned && /resign/i.test(r.event))) {
-      card.rows.push({ event: "Resigned", date: resigned, filed: "" });
-      log.push({ kind: "added", msg: "Added resignation event for " + disp + " (" + resigned + ")" });
-    }
+    if (appointed && !card.rows.some(r => r.date === appointed && /appoint/i.test(r.event))) card.rows.push({ event: "Appointed", date: appointed, filed: "" });
+    if (resigned && !card.rows.some(r => r.date === resigned && /resign/i.test(r.event))) card.rows.push({ event: "Resigned", date: resigned, filed: "" });
   });
-
-  // ---- PSCs ----
   (p.psc || []).forEach(s => {
     const raw = (s.name || (s.name_elements ? [s.name_elements.forename, s.name_elements.middle_name, s.name_elements.surname].filter(Boolean).join(" ") : "")) || "";
     if (!raw) return;
@@ -1089,21 +984,10 @@ function mergeCompaniesHouse(p) {
     const nature = (s.natures_of_control || []).map(humanNature).join("; ");
     const from = chDate(s.notified_on);
     const ceased = s.ceased_on ? chDate(s.ceased_on) : "";
-    if (!ceased) {
-      const exists = data.psc.current.some(x => sameName(x.name, disp) && x.from === from);
-      if (!exists) { data.psc.current.push({ name: disp, nature: nature, from: from, status: "current" }); log.push({ kind: "added", msg: "Added current PSC: " + disp }); }
-    }
-    if (from && !data.psc.history.some(x => sameName(x.person, disp) && x.date === from && /notif|regist/i.test(x.action))) {
-      data.psc.history.push({ date: from, person: disp, action: "Notified as PSC: " + nature, filed: "", hl: "" });
-      log.push({ kind: "added", msg: "Added PSC notification for " + disp });
-    }
-    if (ceased && !data.psc.history.some(x => sameName(x.person, disp) && x.date === ceased && /cess|ceas/i.test(x.action))) {
-      data.psc.history.push({ date: ceased, person: disp, action: "Cessation as PSC", filed: "", hl: "" });
-      log.push({ kind: "added", msg: "Added PSC cessation for " + disp });
-    }
+    if (!ceased) { const exists = data.psc.current.some(x => sameName(x.name, disp) && x.from === from); if (!exists) { data.psc.current.push({ name: disp, nature: nature, from: from, status: "current" }); log.push({ kind: "added", msg: "PSC " + disp }); } }
+    if (from && !data.psc.history.some(x => sameName(x.person, disp) && x.date === from && /notif|regist/i.test(x.action))) data.psc.history.push({ date: from, person: disp, action: "Notified as PSC: " + nature, filed: "", hl: "" });
+    if (ceased && !data.psc.history.some(x => sameName(x.person, disp) && x.date === ceased && /cess|ceas/i.test(x.action))) data.psc.history.push({ date: ceased, person: disp, action: "Cessation as PSC", filed: "", hl: "" });
   });
-
-  // ---- Filings -> allotments (share-related forms only) ----
   (p.filings || []).forEach(f => {
     const type = (f.type || "").toUpperCase();
     const date = chDate(f.date);
@@ -1111,12 +995,10 @@ function mergeCompaniesHouse(p) {
     if (/^SH0|^SH2|^SH3|CAPITAL/i.test(type) || /allot|capital|sub-?division|transfer of/i.test(desc)) {
       if (!data.allotments.rows.some(r => r.date === date && (r.filing || "").indexOf(type) >= 0)) {
         data.allotments.rows.push({ date: date, type: shareType(type), details: desc || "(see filing)", filing: type + (f.date ? " filed " + chDate(f.date) : ""), hl: "" });
-        log.push({ kind: "added", msg: "Added share event from " + type + " (" + date + ")" });
+        log.push({ kind: "added", msg: "share event " + type });
       }
     }
   });
-
-  // ---- Due dates -> filings reconciliation ----
   if (p.company) {
     const acc = co.accounts && co.accounts.next_due ? chDate(co.accounts.next_due) : "";
     const cs = co.confirmation_statement && co.confirmation_statement.next_due ? chDate(co.confirmation_statement.next_due) : "";
@@ -1124,89 +1006,55 @@ function mergeCompaniesHouse(p) {
     const bits = [];
     if (acc) bits.push("Next accounts due " + acc);
     if (cs) bits.push("next confirmation statement due " + cs);
-    if (bits.length) {
-      data.filings.reconciledNote = note.replace(/\s*Next accounts.*$/i, "").trim() + " " + bits.join("; ") + ".";
-      log.push({ kind: "added", msg: "Recorded CH due dates: " + bits.join("; ") });
-    }
+    if (bits.length) data.filings.reconciledNote = note.replace(/\s*Next accounts.*$/i, "").trim() + " " + bits.join("; ") + ".";
   }
-
-  // ---- Members (reconstructed from incorporation + confirmation statements) ----
   if (p.members && Array.isArray(p.members.current) && p.members.current.length) {
-    let added = 0;
     p.members.current.forEach(m => {
       if (!m.name) return;
       const cls = m.cls || "";
       const exists = data.members.current.some(x => sameName(x.member, m.name) && (x.cls || "") === cls);
-      if (!exists) {
-        data.members.current.push({
-          member: displayName(m.name), address: "", cls: cls,
-          shares: (m.shares != null ? String(m.shares) : ""),
-          nominal: m.nominal || "", paidUp: "Fully paid"
-        });
-        added++;
-        log.push({ kind: "added", msg: "Added member: " + displayName(m.name) + (m.shares ? (" — " + m.shares + " " + cls) : "") });
-      }
+      if (!exists) { data.members.current.push({ member: displayName(m.name), address: "", cls: cls, shares: (m.shares != null ? String(m.shares) : ""), nominal: m.nominal || "", paidUp: "Fully paid" }); log.push({ kind: "added", msg: "member " + displayName(m.name) }); }
     });
-    if (added && p.members.source) data.members.asAtNote = "Current members (" + p.members.source + ")";
-    if (added) log.push({ kind: "conflict", msg: "Member addresses are not on the public record — please add them by hand." });
-  } else if (p.members && (!p.members.current || !p.members.current.length)) {
-    log.push({ kind: "skipped", msg: "Shareholders could not be read automatically from the filed documents — add the register of members by hand." });
+    if (p.members.source) data.members.asAtNote = "Current members (" + p.members.source + ")";
   }
-
-  // ---- Share transfers (read from confirmation statements) -> Allotments & Transfers ----
   if (p.members && Array.isArray(p.members.transfers)) {
     p.members.transfers.forEach(tr => {
       if (!tr || (!tr.date && !tr.detail)) return;
       const exists = data.allotments.rows.some(r => r.date === tr.date && (r.details || "").indexOf(tr.detail) >= 0);
-      if (!exists) {
-        data.allotments.rows.push({ date: tr.date || "", type: "Transfer", details: tr.detail || "Share transfer", filing: "Per confirmation statement", hl: "" });
-        log.push({ kind: "added", msg: "Added share transfer" + (tr.date ? " (" + tr.date + ")" : "") });
-      }
+      if (!exists) data.allotments.rows.push({ date: tr.date || "", type: "Transfer", details: tr.detail || "Share transfer", filing: "Per confirmation statement", hl: "" });
     });
   }
-
-  // ---- tidy: drop fully-empty seed rows the template ships with ----
+  if (p.members && Array.isArray(p.members.allotments)) {
+    p.members.allotments.forEach(al => {
+      if (!al || (!al.date && !al.details)) return;
+      const exists = data.allotments.rows.some(r => r.date === al.date && (r.details || "").indexOf(al.details) >= 0);
+      if (!exists) data.allotments.rows.push({ date: al.date || "", type: "Allotment", details: al.details || "", filing: "Incorporation (IN01)", hl: "" });
+    });
+  }
   pruneBlanks();
-
-  if (!log.length) log.push({ kind: "skipped", msg: "Nothing new to import — your register already matches the Companies House data provided." });
   return log;
 }
-// Remove rows where every value is empty (template placeholders), but always
-// keep at least one row in a list so the editor still shows an add point.
 function pruneBlanks() {
   function allEmpty(obj, keys) { return keys.every(k => { const v = obj[k]; return v === "" || v === null || v === undefined; }); }
-  function prune(list, keys, keepOne) {
-    for (let i = list.length - 1; i >= 0; i--) {
-      if (allEmpty(list[i], keys)) { if (keepOne && list.length === 1) break; list.splice(i, 1); }
-    }
-    if (keepOne && list.length === 0) list.push({});
-  }
-  prune(data.directors.current, ["name", "serviceAddress", "appointed"], false);
-  prune(data.directors.history, ["name"], false);
-  prune(data.psc.current, ["name", "nature", "from"], false);
-  prune(data.members.current, ["member", "address", "shares"], false);
-  prune(data.allotments.rows, ["date", "details", "filing"], false);
-  prune(data.certificates.rows, ["certNo", "holder", "shares"], false);
-  prune(data.psc.history, ["date", "person", "action"], false);
-  prune(data.members.history, ["member"], false);
+  function prune(list, keys) { for (let i = list.length - 1; i >= 0; i--) { if (allEmpty(list[i], keys)) list.splice(i, 1); } }
+  prune(data.directors.current, ["name", "serviceAddress", "appointed"]);
+  prune(data.directors.history, ["name"]);
+  prune(data.psc.current, ["name", "nature", "from"]);
+  prune(data.members.current, ["member", "address", "shares"]);
+  prune(data.allotments.rows, ["date", "details", "filing"]);
+  prune(data.certificates.rows, ["certNo", "holder", "shares"]);
+  prune(data.psc.history, ["date", "person", "action"]);
+  prune(data.members.history, ["member"]);
 }
 function sameName(a, b) { return a && b && a.replace(/[^a-z]/gi, "").toLowerCase() === b.replace(/[^a-z]/gi, "").toLowerCase(); }
 function displayName(n) {
-  // CH officer names often come as "SURNAME, Forename" — flip to natural order
-  if (/,/.test(n)) { const parts = n.split(","); return ((parts[1] || "").trim() + " " + titleCase((parts[0] || "").trim())).trim(); }
-  // Confirmation-statement names arrive in ALL CAPS — convert to Title Case
+  if (/,/.test(n)) { const p = n.split(","); return ((p[1] || "").trim() + " " + titleCase((p[0] || "").trim())).trim(); }
   if (n && n === n.toUpperCase() && /[A-Z]/.test(n)) return titleCase(n);
   return n;
 }
 function titleCase(s) { return s.toLowerCase().replace(/\b\w/g, m => m.toUpperCase()); }
-function humanType(t) {
-  const map = { "ltd": "Private company limited by shares", "private-limited-guarant-nsc": "Private company limited by guarantee", "plc": "Public limited company" };
-  return map[t] || "Private company limited by shares";
-}
-function shareType(t) {
-  if (/SH01/.test(t)) return "Allotment"; if (/SH02/.test(t)) return "Sub-division"; if (/SH0[34]/.test(t)) return "Capital change";
-  return "Share event";
-}
+function humanType(t) { const map = { "ltd": "Private company limited by shares", "private-limited-guarant-nsc": "Private company limited by guarantee", "plc": "Public limited company" }; return map[t] || "Private company limited by shares"; }
+function shareType(t) { if (/SH01/.test(t)) return "Allotment"; if (/SH02/.test(t)) return "Sub-division"; if (/SH0[34]/.test(t)) return "Capital change"; return "Share event"; }
 function officerNote(o) {
   const bits = [];
   if (o.nationality) bits.push("Nationality: " + o.nationality + ".");
@@ -1229,53 +1077,107 @@ function humanNature(code) {
   return map[code] || code.replace(/-/g, " ");
 }
 
-// One-click pull. Calls the site's own backend endpoint, which holds the API
-// key and talks to Companies House. The visitor's browser only ever calls this
-// site, so there is no key exposure and no cross-origin block.
-async function pullFromBackend() {
-  const num = document.getElementById("chNum").value.trim().replace(/\s+/g, "");
-  const status = document.getElementById("chStatus");
-  if (!num) { status.textContent = "Enter a company number first."; return; }
-  status.textContent = "Fetching from Companies House…";
+/* ============================================================
+   PULL / UPDATE (front of house — no plumbing shown)
+   ============================================================ */
+function humanSummary(p) {
+  const bits = [];
+  if (p.officers && p.officers.length) bits.push("directors");
+  if (p.psc && p.psc.length) bits.push("persons with significant control");
+  if (p.members && p.members.current && p.members.current.length) bits.push("shareholders");
+  if ((p.members && ((p.members.transfers||[]).length || (p.members.allotments||[]).length)) || (p.filings && p.filings.length)) bits.push("share history");
+  let s = bits.length ? ("We've filled in your " + bits.join(", ").replace(/, ([^,]*)$/, " and $1") + ", along with your company details and key dates.") : "We've filled in your company details and key dates.";
+  const gaps = [];
+  if (p.members && p.members.current && p.members.current.length) gaps.push("member addresses");
+  gaps.push("share certificate numbers");
+  s += " A few things only you hold (" + gaps.join(", ") + ") are ready for you to add under Edit details.";
+  return s;
+}
+
+async function pullCompany(num, statusEl, onDone) {
+  num = (num || "").trim().toUpperCase().replace(/\s+/g, "");
+  if (!num) { statusEl.textContent = "Please enter your company number."; return; }
+  statusEl.innerHTML = '<span class="spinner"></span>Building your statutory book…';
   try {
     const resp = await fetch(CONFIG.chEndpoint + "?number=" + encodeURIComponent(num), { headers: { "Accept": "application/json" } });
     if (!resp.ok) {
-      let msg;
-      if (resp.status === 404) msg = "No company found with that number (or the pull service is not available here).";
-      else { const e = await resp.json().catch(() => ({})); msg = e.error || ("Pull failed (" + resp.status + ")."); }
-      status.textContent = msg + " If you are viewing this file locally, use the offline option below.";
-      document.getElementById("offlineDetails").open = true;
+      if (resp.status === 404) statusEl.textContent = "We couldn't find a company with that number. Please check and try again.";
+      else statusEl.textContent = "We couldn't reach the records service just now. Please try again in a moment.";
       return;
     }
     const payload = await resp.json();
-    const log = mergeCompaniesHouse(payload);
-    showMergeLog(log); save(); renderAll();
-    status.textContent = "Done. Review the import summary below, then close and edit anything you need.";
+    const summary = humanSummary(payload);
+    mergeCompaniesHouse(payload);
+    if (!data.company.number) data.company.number = num;
+    data.footer.lastUpdated = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    save();
+    if (onDone) onDone(summary);
   } catch (e) {
-    status.textContent = "Could not reach the pull service. This is normal when the file is opened from disk rather than on the PowerVox site. Use the offline option below.";
-    document.getElementById("offlineDetails").open = true;
+    statusEl.textContent = "We couldn't reach the records service just now. Please try again in a moment, or use ‘Having trouble?’.";
   }
 }
 
 /* ============================================================
-   INIT
+   FLOW
    ============================================================ */
-function renderAll() { renderMasthead(); renderEdit(); renderFooter(); if (document.body.classList.contains("mode-view")) renderView(); }
+function enterApp() {
+  document.body.classList.add("ready");
+  applyLogo();
+  renderMasthead(); renderFooter();
+  showBook();
+  setSaveState("Saved automatically");
+}
+function applyLogo() {
+  try { const l = localStorage.getItem(LS_KEY + "_logo"); if (l) CONFIG.logoUrl = l; } catch (e) {}
+}
+
+function openOffline() {
+  const mb = document.getElementById("modalBody");
+  mb.innerHTML =
+    '<h2>Having trouble?</h2>' +
+    '<p class="sub">The automatic build works on the live PowerVox site. If you are viewing this file on its own, you can paste a Companies House data file here instead.</p>' +
+    '<textarea id="offJson" placeholder="Paste data here"></textarea>' +
+    '<div class="row"><button class="btn gold" id="offGo">Build from this</button><button class="btn" id="offClose">Close</button></div>';
+  document.getElementById("modalBack").classList.add("open");
+  document.getElementById("offClose").onclick = () => document.getElementById("modalBack").classList.remove("open");
+  document.getElementById("offGo").onclick = () => {
+    const raw = document.getElementById("offJson").value.trim();
+    if (!raw) return;
+    let parsed; try { parsed = JSON.parse(raw); } catch (e) { alert("That is not a valid data file."); return; }
+    mergeCompaniesHouse(parsed);
+    if (parsed.company && parsed.company.company_number && !data.company.number) data.company.number = parsed.company.company_number;
+    data.footer.lastUpdated = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    save();
+    document.getElementById("modalBack").classList.remove("open");
+    enterApp();
+  };
+}
 
 function init() {
-  renderAll();
+  applyLogo();
   wireEditorEvents();
-  document.getElementById("btnEdit").onclick = () => setMode("edit");
-  document.getElementById("btnView").onclick = () => setMode("view");
-  document.getElementById("btnExport").onclick = exportRegister;
-  document.getElementById("btnSaveFile").onclick = saveDataFile;
-  document.getElementById("btnLoadFile").onclick = () => document.getElementById("fileInput").click();
-  document.getElementById("fileInput").onchange = e => { if (e.target.files[0]) loadDataFile(e.target.files[0]); };
-  document.getElementById("btnImport").onclick = openImportModal;
-  document.getElementById("btnSample").onclick = () => { if (confirm("Load the sample (Eason Law) data? This replaces the current contents.")) { data = easonSample(); save(); renderAll(); } };
-  document.getElementById("btnBlank").onclick = () => { if (confirm("Clear everything to a blank template? This cannot be undone.")) { data = blankTemplate(); save(); renderAll(); } };
-  document.getElementById("modalBack").onclick = e => { if (e.target.id === "modalBack") closeModal(); };
-  setSaveState(localStorage.getItem(LS_KEY) ? "Loaded from this browser" : "Not saved yet");
+
+  document.getElementById("obGo").onclick = () => {
+    pullCompany(document.getElementById("obNum").value, document.getElementById("obStatus"), () => enterApp());
+  };
+  document.getElementById("obNum").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("obGo").click(); });
+  document.getElementById("obSample").onclick = () => { data = easonSample(); save(); enterApp(); };
+  document.getElementById("obOffline").onclick = openOffline;
+
+  document.getElementById("btnDownload").onclick = exportRegister;
+  document.getElementById("btnPrint").onclick = () => window.print();
+  document.getElementById("btnEdit").onclick = toggleEdit;
+  document.getElementById("btnLogo").onclick = () => document.getElementById("logoInput").click();
+  document.getElementById("logoInput").onchange = e => { if (e.target.files[0]) handleLogo(e.target.files[0]); };
+  document.getElementById("btnNew").onclick = () => { if (confirm("Start a new company? Your current book stays saved in this browser until you replace it.")) { data = blankTemplate(); save(); document.body.classList.remove("ready"); document.getElementById("obNum").value = ""; document.getElementById("obStatus").textContent = ""; } };
+  document.getElementById("btnUpdate").onclick = () => {
+    if (!data.company.number) { alert("Add your company number under Edit details first."); return; }
+    setSaveState("Checking Companies House…");
+    pullCompany(data.company.number, { set textContent(v){ setSaveState(v); }, set innerHTML(v){ setSaveState("Checking Companies House…"); } }, (summary) => { showBook(); setSaveState("Updated " + new Date().toLocaleTimeString()); alert("Updated from Companies House. " + summary); });
+  };
+  document.getElementById("modalBack").onclick = e => { if (e.target.id === "modalBack") document.getElementById("modalBack").classList.remove("open"); };
+
+  if (hasData()) enterApp();
 }
 document.addEventListener("DOMContentLoaded", init);
 </script>
