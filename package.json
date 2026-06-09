@@ -1,0 +1,9 @@
+{
+  "name": "powervox-statutory-register",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PowerVox Statutory Register — hosted editor with one-click Companies House pre-fill.",
+  "engines": {
+    "node": ">=18"
+  }
+}

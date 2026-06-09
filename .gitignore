@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# local env / secrets — never commit your CH_API_KEY
+.env
+.env.*
+
+# Vercel
+.vercel/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
