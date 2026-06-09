@@ -101,24 +101,24 @@ function normaliseClass(raw) {
 }
 
 // Returns [{ name, shares, cls }]
+// Tuned to the real Companies House confirmation statement layout as produced by
+// pdf-parse, which reads:
+//   <count> <CLASS> shares held as at the date of this confirmation statement
+//   Name:<NAME>
+// We anchor on that holding phrase (not the "Shareholding N:" label), so any
+// transfer text wedged before a holding does not break the match.
 function parseShareholders(text) {
   if (!text) return [];
   const out = [];
-  // Normalise whitespace but keep line structure
   const t = text.replace(/\r/g, "");
-  // Pattern A: "Shareholding 1: 250 ORDINARY shares ... Name: MR SCOTT EASON"
-  const reBlock = /shareholding\s*\d+\s*:?[\s]*([\d,]+)\s+([A-Z][A-Z0-9 .\-]{1,30}?)\s+shares?[\s\S]{0,160}?name\s*:?\s*([^\n\r]{2,80})/gi;
+  const re = /([\d,]+)\s+([A-Z][A-Z ]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+confirmation\s+statement\s*Name:\s*([^\n\r]+)/gi;
   let m;
-  while ((m = reBlock.exec(t)) !== null) {
+  while ((m = re.exec(t)) !== null) {
     const shares = parseInt(m[1].replace(/,/g, ""), 10);
     const cls = normaliseClass(m[2]);
     const name = cleanName(m[3]);
     if (name && shares > 0) out.push({ name, shares, cls });
   }
-  // Only the well-anchored "Shareholding N: <count> <class> shares ... Name: <name>"
-  // layout is trusted. Anything else leaves members blank for manual entry rather
-  // than risk wrong figures in a statutory register. rawSample is returned so new
-  // layouts can be added here after seeing a real document.
   return dedupeShareholders(out);
 }
 
@@ -144,15 +144,18 @@ function dedupeShareholders(list) {
 }
 
 // Returns [{ date, detail }]
+// Real layout: "<count> transferred on YYYY-MM-DD" (class and parties are not
+// given on that line), so we record the count and date only.
 function parseTransfers(text) {
   if (!text) return [];
   const out = [];
-  const re = /([\d,]+)\s+([A-Z][A-Z0-9 .\-]{1,30}?)\s+shares?\s+transferred\s+(?:on\s+)?(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/gi;
+  const t = text.replace(/\r/g, "");
+  const re = /([\d,]+)\s+transferred\s+on\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/gi;
   let m;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = re.exec(t)) !== null) {
     const shares = m[1].replace(/,/g, "");
-    const cls = normaliseClass(m[2]);
-    out.push({ date: normaliseDate(m[3]), detail: shares + " " + cls + " shares transferred" });
+    const date = /^\d{4}-/.test(m[2]) ? chDate(m[2]) : normaliseDate(m[2]);
+    out.push({ date: date, detail: shares + " shares transferred" });
   }
   return out;
 }

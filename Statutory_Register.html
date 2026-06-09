@@ -1153,6 +1153,18 @@ function mergeCompaniesHouse(p) {
     log.push({ kind: "skipped", msg: "Shareholders could not be read automatically from the filed documents — add the register of members by hand." });
   }
 
+  // ---- Share transfers (read from confirmation statements) -> Allotments & Transfers ----
+  if (p.members && Array.isArray(p.members.transfers)) {
+    p.members.transfers.forEach(tr => {
+      if (!tr || (!tr.date && !tr.detail)) return;
+      const exists = data.allotments.rows.some(r => r.date === tr.date && (r.details || "").indexOf(tr.detail) >= 0);
+      if (!exists) {
+        data.allotments.rows.push({ date: tr.date || "", type: "Transfer", details: tr.detail || "Share transfer", filing: "Per confirmation statement", hl: "" });
+        log.push({ kind: "added", msg: "Added share transfer" + (tr.date ? " (" + tr.date + ")" : "") });
+      }
+    });
+  }
+
   // ---- tidy: drop fully-empty seed rows the template ships with ----
   pruneBlanks();
 
@@ -1181,7 +1193,9 @@ function pruneBlanks() {
 function sameName(a, b) { return a && b && a.replace(/[^a-z]/gi, "").toLowerCase() === b.replace(/[^a-z]/gi, "").toLowerCase(); }
 function displayName(n) {
   // CH officer names often come as "SURNAME, Forename" — flip to natural order
-  if (/,/.test(n)) { const parts = n.split(","); return (parts[1] || "").trim() + " " + titleCase((parts[0] || "").trim()); }
+  if (/,/.test(n)) { const parts = n.split(","); return ((parts[1] || "").trim() + " " + titleCase((parts[0] || "").trim())).trim(); }
+  // Confirmation-statement names arrive in ALL CAPS — convert to Title Case
+  if (n && n === n.toUpperCase() && /[A-Z]/.test(n)) return titleCase(n);
   return n;
 }
 function titleCase(s) { return s.toLowerCase().replace(/\b\w/g, m => m.toUpperCase()); }
