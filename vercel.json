@@ -3,6 +3,11 @@
   "rewrites": [
     { "source": "/", "destination": "/Statutory_Register.html" }
   ],
+  "functions": {
+    "api/companies-house.js": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/api/companies-house",

@@ -59,9 +59,9 @@ async function fetchAllFilings(number, key) {
 // The filing-history item carries links.document_metadata (a full Document API
 // URL). Appending /content returns the file. The content endpoint usually 302s
 // to a signed S3 URL that must be fetched WITHOUT the auth header.
-async function fetchDocumentText(metadataUrl, key) {
+async function fetchDocumentBuffer(metadataUrl, key) {
   try {
-    if (!metadataUrl) return "";
+    if (!metadataUrl) return null;
     const auth = "Basic " + Buffer.from(key + ":").toString("base64");
     const contentUrl = metadataUrl.replace(/\/+$/, "") + "/content";
     let r = await fetch(contentUrl, {
@@ -70,16 +70,43 @@ async function fetchDocumentText(metadataUrl, key) {
     });
     if (r.status >= 300 && r.status < 400) {
       const loc = r.headers.get("location");
-      if (!loc) return "";
+      if (!loc) return null;
       r = await fetch(loc); // signed URL: no auth header
     }
-    if (!r.ok) return "";
-    const buf = Buffer.from(await r.arrayBuffer());
-    const data = await pdf(buf);
-    return (data && data.text) ? data.text : "";
-  } catch (e) {
-    return "";
-  }
+    if (!r.ok) return null;
+    return Buffer.from(await r.arrayBuffer());
+  } catch (e) { return null; }
+}
+async function fetchDocumentText(metadataUrl, key) {
+  const buf = await fetchDocumentBuffer(metadataUrl, key);
+  if (!buf) return "";
+  try { const d = await pdf(buf); return (d && d.text) ? d.text : ""; } catch (e) { return ""; }
+}
+// OCR fallback for scanned (image-only) documents — done in-function, with no
+// third-party service. Rasterises the PDF (pdf-to-img) and reads each page with
+// tesseract.js (pure WASM). Pages are read one at a time and we stop as soon as
+// the Initial Shareholdings section is captured, so the work is bounded. If
+// anything fails it returns "" and members stay blank for manual entry.
+async function ocrDocument(buffer) {
+  if (!buffer) return "";
+  try {
+    const { pdf } = await import("pdf-to-img");
+    const { createWorker } = require("tesseract.js");
+    const doc = await pdf(buffer, { scale: 2 });
+    const worker = await createWorker("eng", 1, { cachePath: "/tmp" });
+    let combined = "";
+    let n = 0;
+    try {
+      for await (const img of doc) {
+        n++;
+        const res = await worker.recognize(img);
+        combined += "\n" + ((res && res.data && res.data.text) || "");
+        if (/Initial Shareholdings/i.test(combined) && /Number of shares/i.test(combined)) break;
+        if (n >= 8) break; // bound the work
+      }
+    } finally { await worker.terminate(); }
+    return combined;
+  } catch (e) { return ""; }
 }
 
 // -----------------------------------------------------------------------------
@@ -148,17 +175,25 @@ function dedupeShareholders(list) {
 // yet filed a confirmation statement, so shareholders live only here. Layout:
 //   Initial Shareholdings  Name: <NAME>  Address <...>
 //   Class of Shares: <CLASS>  Number of shares: <COUNT>
+// Tolerant of both clean electronic text and messy OCR output (where the label
+// order is jumbled across lines). We split on each "Initial Shareholdings" block
+// and pull Name / Class / Number independently within it.
 function parseInitialShareholders(text) {
   if (!text) return [];
   const out = [];
-  const t = text.replace(/\r/g, "");
-  const re = /Initial Shareholdings[\s\S]*?Name:\s*([\s\S]*?)\s*Address\b[\s\S]*?Class of Shares:\s*([A-Za-z][A-Za-z0-9 ]*?)\s*Number of shares:\s*([\d,]+)/gi;
-  let m;
-  while ((m = re.exec(t)) !== null) {
-    const name = cleanName(m[1].replace(/\n/g, " "));
-    const cls = normaliseClass(m[2]);
-    const shares = parseInt(m[3].replace(/,/g, ""), 10);
-    if (name && shares > 0) out.push({ name, shares, cls });
+  const t = text.replace(/\r/g, "\n");
+  const segs = t.split(/Initial Shareholdings/i);
+  for (let i = 1; i < segs.length; i++) {
+    const seg = segs[i].split(/Persons with Significant Control|Statement of (?:Compliance|Initial)|Lawful Purpose|Each subscriber|Electronically filed document for Company/i)[0];
+    const nameM = /Name:\s*([^\n]+)/i.exec(seg);
+    const numM = /Number of shares?:\s*([\d,]+)/i.exec(seg);
+    const classM = /Class of Shares:\s*([A-Za-z][A-Za-z ]*?)\s*(?:\n|$|Number|Currency|Prescribed|Nominal)/i.exec(seg);
+    if (nameM && numM) {
+      const name = cleanName(nameM[1]);
+      const shares = parseInt(numM[1].replace(/,/g, ""), 10);
+      const cls = classM ? normaliseClass(classM[1]) : "Ordinary";
+      if (name && shares > 0) out.push({ name, shares, cls });
+    }
   }
   return dedupeShareholders(out);
 }
@@ -233,6 +268,25 @@ async function buildMembers(filings, key) {
             details: s.shares + (s.cls ? " " + s.cls : "") + " shares allotted to " + titleCaseName(s.name) + " on incorporation"
           }));
         }
+      }
+    }
+  }
+
+  // OCR fallback: if the text read found no shareholders, the incorporation
+  // document is likely a scanned image. OCR it and try the reader again.
+  if (!current.length && incFiling) {
+    const buf = await fetchDocumentBuffer(incFiling.links && incFiling.links.document_metadata, key);
+    const ocrText = await ocrDocument(buf);
+    if (ocrText) {
+      if (!rawSample) rawSample = ocrText.slice(0, 1500);
+      const init = parseInitialShareholders(ocrText);
+      if (init.length) {
+        current = init;
+        source = "as at incorporation";
+        init.forEach(s => foundingAllotments.push({
+          date: chDate(incFiling.date),
+          details: s.shares + (s.cls ? " " + s.cls : "") + " shares allotted to " + titleCaseName(s.name) + " on incorporation"
+        }));
       }
     }
   }
