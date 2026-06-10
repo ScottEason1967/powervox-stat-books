@@ -88,25 +88,37 @@ async function fetchDocumentText(metadataUrl, key) {
 // the Initial Shareholdings section is captured, so the work is bounded. If
 // anything fails it returns "" and members stay blank for manual entry.
 async function ocrDocument(buffer) {
-  if (!buffer) return "";
+  const diag = { tried: true, stage: "start", pages: 0 };
+  if (!buffer) { diag.stage = "no-buffer"; return { text: "", diag }; }
   try {
+    diag.stage = "import-pdf-to-img";
     const { pdf } = await import("pdf-to-img");
+    diag.stage = "require-tesseract";
     const { createWorker } = require("tesseract.js");
+    diag.stage = "rasterise";
     const doc = await pdf(buffer, { scale: 2 });
+    diag.docPages = doc.length;
+    diag.stage = "create-worker";
     const worker = await createWorker("eng", 1, { cachePath: "/tmp" });
     let combined = "";
     let n = 0;
+    diag.stage = "recognise";
     try {
       for await (const img of doc) {
-        n++;
+        n++; diag.pages = n;
         const res = await worker.recognize(img);
         combined += "\n" + ((res && res.data && res.data.text) || "");
         if (/Initial Shareholdings/i.test(combined) && /Number of shares/i.test(combined)) break;
         if (n >= 8) break; // bound the work
       }
     } finally { await worker.terminate(); }
-    return combined;
-  } catch (e) { return ""; }
+    diag.stage = "done"; diag.chars = combined.length;
+    return { text: combined, diag };
+  } catch (e) {
+    diag.error = (e && e.message) ? e.message : String(e);
+    try { console.error("OCR failed at stage", diag.stage, "-", diag.error); } catch (_) {}
+    return { text: "", diag };
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -244,6 +256,7 @@ async function buildMembers(filings, key) {
   const transfers = [];
   const foundingAllotments = [];
   let rawSample = "";
+  let ocrDiag = null;
 
   for (const f of docsToScan) {
     const metaUrl = f.links && f.links.document_metadata;
@@ -276,8 +289,12 @@ async function buildMembers(filings, key) {
   // document is likely a scanned image. OCR it and try the reader again.
   if (!current.length && incFiling) {
     const buf = await fetchDocumentBuffer(incFiling.links && incFiling.links.document_metadata, key);
-    const ocrText = await ocrDocument(buf);
+    ocrDiag = { bufferBytes: buf ? buf.length : 0 };
+    const ocr = await ocrDocument(buf);
+    ocrDiag = Object.assign(ocrDiag, ocr.diag);
+    const ocrText = ocr.text;
     if (ocrText) {
+      ocrDiag.parsedFromOcr = parseInitialShareholders(ocrText).length;
       if (!rawSample) rawSample = ocrText.slice(0, 1500);
       const init = parseInitialShareholders(ocrText);
       if (init.length) {
@@ -295,7 +312,7 @@ async function buildMembers(filings, key) {
   // for the user, to avoid putting guessed figures into a statutory register.
   current = current.map(s => ({ name: s.name, cls: s.cls, shares: s.shares, nominal: "" }));
 
-  return { current, source, transfers, allotments: foundingAllotments, rawSample };
+  return { current, source, transfers, allotments: foundingAllotments, rawSample, ocrDiag };
 }
 
 function chDate(s) {
