@@ -69,6 +69,7 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 #onboard .ob-results { max-width: 540px; margin: 14px auto 0; text-align: left; }
 #onboard .ob-results .res { background: rgba(255,255,255,.97); color: var(--ink); border-radius: 8px; padding: 11px 14px; margin-bottom: 8px; cursor: pointer; border: 1px solid transparent; transition: border-color .12s; }
 #onboard .ob-results .res:hover { border-color: var(--gold); }
+#onboard .ob-results .res.chosen { border-color: var(--gold); background: #fff; box-shadow: inset 0 0 0 1px var(--gold); }
 #onboard .ob-results .res .rt { font-family: var(--serif); font-weight: 600; font-size: 15px; color: var(--forest); }
 #onboard .ob-results .res .rm { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 #onboard .ob-results .res .rs { display: inline-block; margin-top: 5px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--gold-deep); }
@@ -1187,6 +1188,7 @@ function openOffline() {
 // Company-name search on the opening screen.
 function looksLikeNumber(v) { v = (v || "").trim(); return /^[A-Z0-9]{6,8}$/i.test(v) && /[0-9]/.test(v); }
 let _searchTimer = null;
+let _selected = null; // company chosen from results, awaiting an explicit "Create"
 function searchCompanies(q) {
   const box = document.getElementById("obResults");
   q = (q || "").trim();
@@ -1197,7 +1199,7 @@ function searchCompanies(q) {
       const items = (d.items || []);
       if (!items.length) { box.innerHTML = '<div class="none">No companies found. Check the spelling, or type the company number.</div>'; return; }
       box.innerHTML = items.map(it =>
-        '<div class="res' + (it.status && it.status !== "active" ? " inactive" : "") + '" data-num="' + esc(it.number) + '">' +
+        '<div class="res' + (it.status && it.status !== "active" ? " inactive" : "") + '" data-num="' + esc(it.number) + '" data-title="' + esc(it.title) + '">' +
           '<div class="rt">' + esc(it.title) + '</div>' +
           '<div class="rm">' + esc(it.number) + (it.address ? (" · " + esc(it.address)) : "") + '</div>' +
           (it.status ? ('<span class="rs">' + esc(it.status.replace(/-/g, " ")) + '</span>') : "") +
@@ -1205,9 +1207,12 @@ function searchCompanies(q) {
       ).join("");
       box.querySelectorAll(".res[data-num]").forEach(elm => {
         elm.onclick = () => {
-          document.getElementById("obNum").value = elm.dataset.num;
-          box.innerHTML = "";
-          pullCompany(elm.dataset.num, document.getElementById("obStatus"), () => enterApp());
+          // select only — do not build until the user clicks Create
+          _selected = { number: elm.dataset.num, title: elm.dataset.title || "" };
+          document.getElementById("obNum").value = _selected.title || _selected.number;
+          box.querySelectorAll(".res").forEach(r => r.classList.remove("chosen"));
+          elm.classList.add("chosen");
+          document.getElementById("obStatus").textContent = "Selected: " + (_selected.title ? _selected.title + " (" + _selected.number + ")" : _selected.number) + ". Now click ‘Create my statutory book’.";
         };
       });
     })
@@ -1220,10 +1225,16 @@ function init() {
 
   document.getElementById("obGo").onclick = () => {
     const v = document.getElementById("obNum").value;
-    if (looksLikeNumber(v)) pullCompany(v, document.getElementById("obStatus"), () => enterApp());
-    else searchCompanies(v);
+    if (_selected && (v === _selected.title || v === _selected.number)) {
+      pullCompany(_selected.number, document.getElementById("obStatus"), () => enterApp());
+    } else if (looksLikeNumber(v)) {
+      pullCompany(v, document.getElementById("obStatus"), () => enterApp());
+    } else {
+      searchCompanies(v);
+    }
   };
   document.getElementById("obNum").addEventListener("input", e => {
+    _selected = null;   // typing changes the query, so drop any prior selection
     clearTimeout(_searchTimer);
     const v = e.target.value;
     _searchTimer = setTimeout(() => searchCompanies(v), 300);
