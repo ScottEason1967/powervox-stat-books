@@ -113,6 +113,9 @@ header.masthead .gold-rule { width: 52px; height: 2px; background: var(--gold); 
 .health.attention .dot { background: var(--gold); }
 .health strong { font-weight: 600; }
 .health .items { color: var(--muted); font-size: 13px; }
+.statusflag { display: none; align-items: center; gap: 12px; padding: 13px 48px; font-size: 14px; background: #F6E4E2; color: #8A2B2B; border-bottom: 1px solid #E7C9C5; }
+.statusflag .dot { width: 9px; height: 9px; border-radius: 50%; background: #B3382F; flex: none; }
+.statusflag strong { font-weight: 600; }
 
 /* nav */
 nav.toc { font-family: var(--sans); background: var(--cream); border-bottom: 1px solid var(--line); padding: 12px 48px; }
@@ -274,6 +277,7 @@ body.mode-edit .view-only { display: none; }
       <div class="gold-rule"></div>
     </header>
 
+    <div class="statusflag" id="statusFlag"></div>
     <div class="health" id="health"></div>
 
     <nav class="toc view-only">
@@ -330,7 +334,7 @@ function blankTemplate() {
       name: "", number: "", type: "Private company limited by shares",
       jurisdiction: "England and Wales", incorporated: "",
       registeredOffice: "", accountingRefDate: "", sicCode: "",
-      articles: "", memorandumDated: "",
+      articles: "", memorandumDated: "", status: "", dissolvedOn: "",
       recordKeepingNote: "These registers are maintained pursuant to sections 113 to 128, 162, 275 and 790M of the Companies Act 2006. They are kept in electronic form under section 1135 of the 2006 Act and are capable of being reproduced in hard copy. They are available for inspection at the Company's registered office (or its single alternative inspection location, where applicable) on reasonable notice during business hours.",
       officeHistory: [ { from: "", to: "current", address: "", current: true } ]
     },
@@ -884,7 +888,22 @@ function delRow(listPath, idx) { getByPath(listPath).splice(idx, 1); save(); ren
 function showBook() {
   document.body.classList.remove("mode-edit");
   document.getElementById("btnEdit").textContent = "Edit details";
-  renderView(); renderHealth();
+  renderView(); renderHealth(); renderStatusFlag();
+}
+function renderStatusFlag() {
+  const el = document.getElementById("statusFlag");
+  if (!el) return;
+  const st = (data.company.status || "").toLowerCase();
+  if (!st || st === "active") { el.style.display = "none"; el.innerHTML = ""; return; }
+  let msg;
+  if (st === "dissolved") {
+    msg = "This company is dissolved" + (data.company.dissolvedOn ? " (dissolved on " + data.company.dissolvedOn + ")" : "") + ". The register below reflects the final position on the public record.";
+  } else {
+    const human = st.replace(/-/g, " ").replace(/\b\w/g, m => m.toUpperCase());
+    msg = "Companies House records this company as: " + human + ". The register below reflects the current public record.";
+  }
+  el.style.display = "flex";
+  el.innerHTML = '<span class="dot"></span><strong>' + esc(msg) + "</strong>";
 }
 function toggleEdit() {
   if (document.body.classList.contains("mode-edit")) { showBook(); }
@@ -967,6 +986,8 @@ function mergeCompaniesHouse(p) {
   if (co.date_of_creation) fill("incorporated", chDate(co.date_of_creation), "incorporation date");
   if (co.registered_office_address) fill("registeredOffice", addrToString(co.registered_office_address), "registered office");
   if (co.sic_codes && co.sic_codes.length) fill("sicCode", co.sic_codes.join(", "), "SIC code");
+  if (co.company_status) data.company.status = co.company_status;
+  if (co.date_of_cessation) data.company.dissolvedOn = chDate(co.date_of_cessation);
   if (co.accounts && co.accounts.accounting_reference_date) {
     const ard = co.accounts.accounting_reference_date;
     const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
