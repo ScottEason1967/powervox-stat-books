@@ -66,6 +66,14 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 #onboard .ob-logo { margin-top: 18px; font-size: 13px; }
 #onboard .ob-logo a, #onboard .tiny a { color: rgba(255,255,255,.85); text-decoration: underline; cursor: pointer; }
 #onboard .tiny { margin-top: 26px; font-size: 12px; color: rgba(255,255,255,.55); }
+#onboard .ob-results { max-width: 540px; margin: 14px auto 0; text-align: left; }
+#onboard .ob-results .res { background: rgba(255,255,255,.97); color: var(--ink); border-radius: 8px; padding: 11px 14px; margin-bottom: 8px; cursor: pointer; border: 1px solid transparent; transition: border-color .12s; }
+#onboard .ob-results .res:hover { border-color: var(--gold); }
+#onboard .ob-results .res .rt { font-family: var(--serif); font-weight: 600; font-size: 15px; color: var(--forest); }
+#onboard .ob-results .res .rm { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+#onboard .ob-results .res .rs { display: inline-block; margin-top: 5px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--gold-deep); }
+#onboard .ob-results .res.inactive .rs { color: #8a2b2b; }
+#onboard .ob-results .none { color: rgba(255,255,255,.8); font-size: 13.5px; padding: 4px 2px; }
 .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; vertical-align: -2px; margin-right: 8px; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -229,12 +237,13 @@ body.mode-edit .view-only { display: none; }
   <div class="card">
     <p class="eyebrow">PowerVox</p>
     <h1>Your statutory books,<br>in good order.</h1>
-    <p class="lede">Enter your company number. We do the rest.</p>
+    <p class="lede">Enter your company name or number. We do the rest.</p>
     <p class="help">We build your full statutory register from the public record, so you are organised, compliant, and ready for anything from a bank to a buyer.</p>
     <div class="entry">
-      <input type="text" id="obNum" placeholder="Company number" autocomplete="off">
+      <input type="text" id="obNum" placeholder="Company name or number" autocomplete="off">
       <button class="btn gold" id="obGo">Create my statutory book</button>
     </div>
+    <div id="obResults" class="ob-results"></div>
     <p class="ob-status" id="obStatus"></p>
     <div class="gold-rule"></div>
     <p class="tiny"><a id="obSample">See an example</a> &nbsp;·&nbsp; <a id="obOffline">Having trouble?</a></p>
@@ -308,7 +317,8 @@ const CONFIG = {
   brandName: "PowerVox",
   logoText: "PowerVox",
   logoUrl: "",
-  chEndpoint: "/api/companies-house"
+  chEndpoint: "/api/companies-house",
+  searchEndpoint: "/api/search"
 };
 
 /* ============================================================
@@ -1153,13 +1163,50 @@ function openOffline() {
   };
 }
 
+// Company-name search on the opening screen.
+function looksLikeNumber(v) { v = (v || "").trim(); return /^[A-Z0-9]{6,8}$/i.test(v) && /[0-9]/.test(v); }
+let _searchTimer = null;
+function searchCompanies(q) {
+  const box = document.getElementById("obResults");
+  q = (q || "").trim();
+  if (q.length < 2 || looksLikeNumber(q)) { box.innerHTML = ""; return; }
+  fetch(CONFIG.searchEndpoint + "?q=" + encodeURIComponent(q), { headers: { "Accept": "application/json" } })
+    .then(r => r.ok ? r.json() : { items: [] })
+    .then(d => {
+      const items = (d.items || []);
+      if (!items.length) { box.innerHTML = '<div class="none">No companies found. Check the spelling, or type the company number.</div>'; return; }
+      box.innerHTML = items.map(it =>
+        '<div class="res' + (it.status && it.status !== "active" ? " inactive" : "") + '" data-num="' + esc(it.number) + '">' +
+          '<div class="rt">' + esc(it.title) + '</div>' +
+          '<div class="rm">' + esc(it.number) + (it.address ? (" · " + esc(it.address)) : "") + '</div>' +
+          (it.status ? ('<span class="rs">' + esc(it.status.replace(/-/g, " ")) + '</span>') : "") +
+        '</div>'
+      ).join("");
+      box.querySelectorAll(".res[data-num]").forEach(elm => {
+        elm.onclick = () => {
+          document.getElementById("obNum").value = elm.dataset.num;
+          box.innerHTML = "";
+          pullCompany(elm.dataset.num, document.getElementById("obStatus"), () => enterApp());
+        };
+      });
+    })
+    .catch(() => { box.innerHTML = ""; });
+}
+
 function init() {
   applyLogo();
   wireEditorEvents();
 
   document.getElementById("obGo").onclick = () => {
-    pullCompany(document.getElementById("obNum").value, document.getElementById("obStatus"), () => enterApp());
+    const v = document.getElementById("obNum").value;
+    if (looksLikeNumber(v)) pullCompany(v, document.getElementById("obStatus"), () => enterApp());
+    else searchCompanies(v);
   };
+  document.getElementById("obNum").addEventListener("input", e => {
+    clearTimeout(_searchTimer);
+    const v = e.target.value;
+    _searchTimer = setTimeout(() => searchCompanies(v), 300);
+  });
   document.getElementById("obNum").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("obGo").click(); });
   document.getElementById("obSample").onclick = () => { data = easonSample(); save(); enterApp(); };
   document.getElementById("obOffline").onclick = openOffline;
