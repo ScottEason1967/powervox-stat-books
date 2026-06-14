@@ -263,6 +263,8 @@ body.mode-edit .view-only { display: none; }
     <button class="btn ghost-light" id="btnPrint">Print</button>
     <button class="btn ghost-light" id="btnEdit">Edit details</button>
     <button class="btn ghost-light" id="btnLogo">Add your logo</button>
+    <button class="btn ghost-light" id="btnTheme">Theme from logo</button>
+    <button class="btn ghost-light" id="btnResetTheme">Reset theme</button>
     <button class="btn ghost-light" id="btnNew">New company</button>
     <div class="savestate" id="saveState"></div>
     <input type="file" id="logoInput" accept="image/*" style="display:none">
@@ -958,6 +960,87 @@ function handleLogo(file) {
 }
 
 /* ============================================================
+   THEME FROM LOGO — pull the logo's main colours and re-skin
+   ============================================================ */
+const THEME_VARS = ["--forest","--forest-deep","--gold","--gold-deep","--mulberry","--cream","--sage","--sage-soft","--stone","--line","--ink","--muted"];
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h, s, l = (mx + mn) / 2;
+  if (mx === mn) { h = s = 0; }
+  else { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    switch (mx) { case r: h = (g - b) / d + (g < b ? 6 : 0); break; case g: h = (b - r) / d + 2; break; default: h = (r - g) / d + 4; } h /= 6; }
+  return [h * 360, s, l];
+}
+function hslStr(h, s, l) { return "hsl(" + Math.round(((h % 360) + 360) % 360) + "," + Math.round(s * 100) + "%," + Math.round(l * 100) + "%)"; }
+function quantiseColours(dataArr, step) {
+  const buckets = {};
+  for (let i = 0; i < dataArr.length; i += 4 * step) {
+    const r = dataArr[i], g = dataArr[i + 1], b = dataArr[i + 2], a = dataArr[i + 3];
+    if (a < 200) continue;
+    if (r > 238 && g > 238 && b > 238) continue; // near white
+    if (r < 20 && g < 20 && b < 20) continue;     // near black
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    const q = 24, key = Math.round(r / q) * q + "," + Math.round(g / q) * q + "," + Math.round(b / q) * q;
+    if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, n: 0, sat: 0 };
+    const bk = buckets[key]; bk.r += r; bk.g += g; bk.b += b; bk.n++; bk.sat += (mx - mn) / (mx || 1);
+  }
+  return Object.keys(buckets).map(k => { const b = buckets[k]; return { r: Math.round(b.r / b.n), g: Math.round(b.g / b.n), b: Math.round(b.b / b.n), n: b.n, sat: b.sat / b.n }; });
+}
+function pickPrimaryAccent(buckets) {
+  if (!buckets.length) return null;
+  const scored = buckets.map(b => Object.assign({}, b, { score: b.n * (0.35 + b.sat) }));
+  scored.sort((a, b) => b.score - a.score);
+  const primary = scored[0];
+  const ph = rgbToHsl(primary.r, primary.g, primary.b)[0];
+  let accent = null;
+  for (let i = 1; i < scored.length; i++) { const c = scored[i]; const h = rgbToHsl(c.r, c.g, c.b)[0]; let d = Math.abs(h - ph); d = Math.min(d, 360 - d); if (d > 35 && c.sat > 0.15) { accent = c; break; } }
+  return { primary, accent };
+}
+function deriveTheme(primary, accent) {
+  const p = rgbToHsl(primary.r, primary.g, primary.b);
+  const ph = p[0], s = Math.max(0.22, Math.min(p[1], 0.7));
+  const a = accent ? rgbToHsl(accent.r, accent.g, accent.b) : [(ph + 40) % 360, Math.max(0.5, s), 0.5];
+  const ah = a[0], as = Math.max(0.4, Math.min(a[1], 0.85));
+  return {
+    "--forest": hslStr(ph, s, 0.30), "--forest-deep": hslStr(ph, s, 0.22),
+    "--gold": hslStr(ah, as, 0.42), "--gold-deep": hslStr(ah, as, 0.34),
+    "--mulberry": hslStr((ph + 330) % 360, Math.max(0.3, s * 0.8), 0.42),
+    "--cream": hslStr(ph, 0.16, 0.96), "--sage": hslStr(ph, 0.18, 0.88), "--sage-soft": hslStr(ph, 0.16, 0.93),
+    "--stone": hslStr(ph, 0.12, 0.66), "--line": hslStr(ph, 0.14, 0.90),
+    "--ink": hslStr(ph, 0.22, 0.22), "--muted": hslStr(ph, 0.12, 0.46)
+  };
+}
+function applyTheme(map) { for (const k in map) document.documentElement.style.setProperty(k, map[k]); }
+function themeFromLogo() {
+  if (!CONFIG.logoUrl) { alert("Add your logo first, then I can match the colours to it."); return; }
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const w = 64, h = Math.max(1, Math.round(64 * (img.height / img.width)));
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
+      const px = ctx.getImageData(0, 0, w, h).data;
+      const pick = pickPrimaryAccent(quantiseColours(px, 1));
+      if (!pick) { alert("I couldn't read enough colour from that logo. A logo with a clear colour works best."); return; }
+      const map = deriveTheme(pick.primary, pick.accent);
+      applyTheme(map);
+      try { localStorage.setItem(LS_KEY + "_theme", JSON.stringify(map)); } catch (e) {}
+      renderMasthead();
+    } catch (e) { alert("I couldn't read the colours from that logo."); }
+  };
+  img.onerror = () => alert("I couldn't load that logo image.");
+  img.src = CONFIG.logoUrl;
+}
+function resetTheme() {
+  THEME_VARS.forEach(k => document.documentElement.style.removeProperty(k));
+  try { localStorage.removeItem(LS_KEY + "_theme"); } catch (e) {}
+  renderMasthead();
+}
+function applySavedTheme() {
+  try { const t = localStorage.getItem(LS_KEY + "_theme"); if (t) applyTheme(JSON.parse(t)); } catch (e) {}
+}
+
+/* ============================================================
    COMPANIES HOUSE MERGE (engine — unchanged logic)
    ============================================================ */
 function chDate(s) {
@@ -1221,6 +1304,7 @@ function searchCompanies(q) {
 
 function init() {
   applyLogo();
+  applySavedTheme();
   wireEditorEvents();
 
   document.getElementById("obGo").onclick = () => {
@@ -1248,6 +1332,8 @@ function init() {
   document.getElementById("btnEdit").onclick = toggleEdit;
   document.getElementById("btnLogo").onclick = () => document.getElementById("logoInput").click();
   document.getElementById("logoInput").onchange = e => { if (e.target.files[0]) handleLogo(e.target.files[0]); };
+  document.getElementById("btnTheme").onclick = themeFromLogo;
+  document.getElementById("btnResetTheme").onclick = resetTheme;
   document.getElementById("btnNew").onclick = () => { if (confirm("Start a new company? Your current book stays saved in this browser until you replace it.")) { data = blankTemplate(); save(); document.body.classList.remove("ready"); document.getElementById("obNum").value = ""; document.getElementById("obStatus").textContent = ""; } };
   document.getElementById("btnUpdate").onclick = () => {
     if (!data.company.number) { alert("Add your company number under Edit details first."); return; }
