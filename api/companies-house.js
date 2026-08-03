@@ -275,10 +275,12 @@ async function buildMembers(filings, key) {
 
   let current = [];
   let source = "";
-  // Scan back through up to a dozen statements. Some are marked "with updates"
-  // but only restate the capital total (no shareholder list), so we judge each on
-  // its actual content and keep going until one yields shareholders.
-  const docsToScan = csFilings.slice(0, 12);
+  // Statements filed as "no updates" never carry a shareholder list, so skip
+  // them outright rather than downloading dead weight. Some "with updates"
+  // statements still only restate capital, so each survivor is judged on its
+  // actual content and we keep walking until one yields shareholders.
+  const noUpd = f => /no.?updates/i.test(String(f.description || ""));
+  const docsToScan = csFilings.filter(f => !noUpd(f)).slice(0, 8);
   if (incFiling) docsToScan.push(incFiling);
 
   const transfers = [];
@@ -324,26 +326,25 @@ async function buildMembers(filings, key) {
   // documents newest first and stop at the first that yields a list. Bounded to a
   // couple of documents to stay within the function time budget. Pre-2009
   // incorporations use an unreadable layout, so they are skipped.
-  // Order OCR candidates for best odds within the time budget: newest scanned
-  // statement first (carries the list if shareholders changed recently), then the
-  // company's FIRST-ever statement (the only one guaranteed to carry the full
-  // list), then remaining statements, then the incorporation.
+  // The incorporation is the only public document GUARANTEED to name the
+  // shareholders, so it gets a protected slot: newest informative scanned
+  // statement first (it would carry the CURRENT list if one exists), the
+  // incorporation second, any remaining scanned statements after that. It must
+  // never sit behind a queue of duds again.
   const scannedCS = scannedDocs.filter(f => !isInc(f));
-  const scannedInc = scannedDocs.filter(isInc);
-  const ocrQueue = [];
-  if (scannedCS.length) ocrQueue.push(scannedCS[0]);
-  if (scannedCS.length > 1) ocrQueue.push(scannedCS[scannedCS.length - 1]);
-  ocrQueue.push(...scannedCS.slice(1, -1), ...scannedInc);
+  const scannedInc = scannedDocs.filter(isInc)
+    .filter(f => String(f.date || "") >= "2009-10-01"); // pre-2009 layout is unreadable
+  const ocrQueue = [...scannedCS.slice(0, 1), ...scannedInc, ...scannedCS.slice(1)];
 
   const MAX_OCR = 3;
   let ocrTried = 0;
   for (const f of ocrQueue) {
     if (current.length || ocrTried >= MAX_OCR) break;
-    if (Date.now() - t0 > 35000) break; // out of time budget: return what we have rather than 504
-    if (isInc(f) && !(String(f.date || "") >= "2009-10-01")) continue; // old incorporation: unreadable
+    const elapsed = Date.now() - t0;
+    if (isInc(f) ? elapsed > 42000 : elapsed > 28000) continue; // stay inside the 60s function cap
     ocrTried++;
     const buf = await fetchDocumentBuffer(f.links && f.links.document_metadata, key);
-    const ocr = await ocrDocument(buf, isInc(f) ? 14 : 6, t0 + 40000); // incorporations run long; let time decide
+    const ocr = await ocrDocument(buf, isInc(f) ? 14 : 6, t0 + 50000); // page-level deadline
     ocrDiag = Object.assign({ doc: f.type || f.category || "", bytes: buf ? buf.length : 0 }, ocr.diag);
     const ocrText = ocr.text;
     if (!ocrText) continue;
