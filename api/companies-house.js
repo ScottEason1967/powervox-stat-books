@@ -87,7 +87,8 @@ async function fetchDocumentText(metadataUrl, key) {
 // tesseract.js (pure WASM). Pages are read one at a time and we stop as soon as
 // the Initial Shareholdings section is captured, so the work is bounded. If
 // anything fails it returns "" and members stay blank for manual entry.
-async function ocrDocument(buffer) {
+async function ocrDocument(buffer, maxPages) {
+  const pageCap = maxPages || 8;
   const diag = { tried: true, stage: "start", pages: 0 };
   if (!buffer) { diag.stage = "no-buffer"; return { text: "", diag }; }
   try {
@@ -109,7 +110,11 @@ async function ocrDocument(buffer) {
         const res = await worker.recognize(img);
         combined += "\n" + ((res && res.data && res.data.text) || "");
         if (/Initial Shareholdings/i.test(combined) && /Number of shares/i.test(combined)) break;
-        if (n >= 8) break; // bound the work
+        // Statements: stop once the shareholder list has been read and the closing
+        // section starts, so we don't OCR trailing boilerplate pages.
+        if (/shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this/i.test(combined) &&
+            /Authorisation|End of Electronically Filed Document/i.test(combined)) break;
+        if (n >= pageCap) break; // bound the work
       }
     } finally { await worker.terminate(); }
     diag.stage = "done"; diag.chars = combined.length;
@@ -242,6 +247,7 @@ function normaliseDate(s) {
 // Build the members block from documents. Walk confirmation statements newest
 // first; use the first one that yields shareholders for the current list.
 async function buildMembers(filings, key) {
+  const t0 = Date.now(); // total time budget guard (Vercel function cap is 60s)
   const isCS = f => /^CS01$/i.test(f.type || "") || (f.category || "") === "confirmation-statement" ||
                     (f.category || "") === "annual-return" || /^363|^AR01/i.test(f.type || "");
   const isInc = f => /^NEWINC$/i.test(f.type || "") || (f.category || "") === "incorporation";
@@ -272,7 +278,10 @@ async function buildMembers(filings, key) {
   for (const f of docsToScan) {
     const metaUrl = f.links && f.links.document_metadata;
     const text = await fetchDocumentText(metaUrl, key);
-    if (!text) { scannedDocs.push(f); continue; }
+    // Scanned documents are not empty: pdf-parse returns a few stray whitespace
+    // characters. Judge by substance, not truthiness, or OCR never triggers.
+    const substance = (text || "").replace(/\s+/g, "").length;
+    if (substance < 40) { scannedDocs.push(f); continue; }
     if (!rawSample) rawSample = text.slice(0, 1500);
     parseTransfers(text).forEach(t => transfers.push(t));
     if (current.length === 0) {
@@ -307,10 +316,11 @@ async function buildMembers(filings, key) {
   let ocrTried = 0;
   for (const f of scannedDocs) {
     if (current.length || ocrTried >= MAX_OCR) break;
+    if (Date.now() - t0 > 35000) break; // out of time budget: return what we have rather than 504
     if (isInc(f) && !(String(f.date || "") >= "2009-10-01")) continue; // old incorporation: unreadable
     ocrTried++;
     const buf = await fetchDocumentBuffer(f.links && f.links.document_metadata, key);
-    const ocr = await ocrDocument(buf);
+    const ocr = await ocrDocument(buf, isInc(f) ? 8 : 6); // statements are short; cap tighter
     ocrDiag = Object.assign({ doc: f.type || f.category || "", bytes: buf ? buf.length : 0 }, ocr.diag);
     const ocrText = ocr.text;
     if (!ocrText) continue;
@@ -353,7 +363,7 @@ function chDate(s) {
 // -----------------------------------------------------------------------------
 module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=300");
+  res.setHeader("Cache-Control", "no-store"); // always live: stale cached pulls caused false "not working" results
 
   const key = process.env.CH_API_KEY;
   if (!key) {

@@ -13,7 +13,7 @@
     {
       "source": "/api/companies-house",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=300" }
+        { "key": "Cache-Control", "value": "no-store" }
       ]
     }
   ]
