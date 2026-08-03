@@ -283,6 +283,7 @@ body.mode-edit .view-only { display: none; }
     </header>
 
     <div class="statusflag" id="statusFlag"></div>
+    <div class="statusflag" id="reconcileFlag"></div>
     <div class="health" id="health"></div>
 
     <nav class="toc view-only">
@@ -895,7 +896,7 @@ function delRow(listPath, idx) { getByPath(listPath).splice(idx, 1); save(); ren
 function showBook() {
   document.body.classList.remove("mode-edit");
   document.getElementById("btnEdit").textContent = "Edit details";
-  renderView(); renderHealth(); renderStatusFlag();
+  renderView(); renderHealth(); renderStatusFlag(); renderReconcileFlag();
 }
 function renderStatusFlag() {
   const el = document.getElementById("statusFlag");
@@ -909,6 +910,28 @@ function renderStatusFlag() {
     const human = st.replace(/-/g, " ").replace(/\b\w/g, m => m.toUpperCase());
     msg = "Companies House records this company as: " + human + ". The register below reflects the current public record.";
   }
+  el.style.display = "flex";
+  el.innerHTML = '<span class="dot"></span><strong>' + esc(msg) + "</strong>";
+}
+// Red flag when the register of members disagrees with the public record's
+// issued-share total. Self-clearing: fix the register and the flag goes.
+function renderReconcileFlag() {
+  const el = document.getElementById("reconcileFlag");
+  if (!el) return;
+  const pc = data.members && data.members.publicCapital;
+  const rows = ((data.members && data.members.current) || []).filter(r => r && r.member);
+  let sum = 0, any = false;
+  rows.forEach(r => {
+    const n = parseInt(String(r.shares || "").replace(/[^0-9]/g, ""), 10);
+    if (!isNaN(n)) { sum += n; any = true; }
+  });
+  if (!pc || pc.total == null || !any || Number(pc.total) === sum) {
+    el.style.display = "none"; el.innerHTML = ""; return;
+  }
+  const msg = "Reconciliation needed. Companies House shows " + pc.total +
+    " share" + (Number(pc.total) === 1 ? "" : "s") + " in issue" +
+    (pc.asAt ? " (as at " + pc.asAt + ")" : "") +
+    ", but this register lists " + sum + " across its members. The movement between the two is not on the public record — update the register of members to the true position.";
   el.style.display = "flex";
   el.innerHTML = '<span class="dot"></span><strong>' + esc(msg) + "</strong>";
 }
@@ -1135,6 +1158,9 @@ function mergeCompaniesHouse(p) {
       if (!exists) { data.members.current.push({ member: displayName(m.name), address: "", cls: cls, shares: (m.shares != null ? String(m.shares) : ""), nominal: m.nominal || "", paidUp: "Fully paid" }); log.push({ kind: "added", msg: "member " + displayName(m.name) }); }
     });
     if (p.members.source) data.members.asAtNote = "Current members (" + p.members.source + ")";
+  }
+  if (p.members && p.members.capital && p.members.capital.total != null) {
+    data.members.publicCapital = { total: p.members.capital.total, asAt: p.members.capital.asAt || "" };
   }
   if (p.members && Array.isArray(p.members.transfers)) {
     p.members.transfers.forEach(tr => {

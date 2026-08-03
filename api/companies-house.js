@@ -230,6 +230,21 @@ function parseInitialShareholders(text) {
 }
 function titleCaseName(s) { return (s || "").toLowerCase().replace(/\b\w/g, m => m.toUpperCase()); }
 
+// Reads the issued-share total from a statement's "Statement of Capital".
+// Prefers the explicit Totals line; falls back to summing each class's
+// "Number allotted". Tolerates pdf-parse jamming label and value together
+// ("Number allotted100", "Total number of shares:1").
+function parseCapitalTotal(text) {
+  if (!text) return null;
+  const tot = /Total number of shares:?\s*([\d,]+)/i.exec(text);
+  if (tot) return parseInt(tot[1].replace(/,/g, ""), 10);
+  let sum = 0, seen = false;
+  const re = /Number allotted:?\s*([\d,]+)/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) { sum += parseInt(m[1].replace(/,/g, ""), 10); seen = true; }
+  return seen ? sum : null;
+}
+
 // Returns [{ date, detail }]
 // Real layout: "<count> transferred on YYYY-MM-DD" (class and parties are not
 // given on that line), so we record the count and date only.
@@ -288,6 +303,8 @@ async function buildMembers(filings, key) {
   const scannedDocs = []; // statements with no text layer — OCR candidates
   let rawSample = "";
   let ocrDiag = null;
+  let capital = null; // latest issued-share total seen in a statement of capital
+  let membersISO = ""; // filing date of the document the members came from
 
   for (const f of docsToScan) {
     const metaUrl = f.links && f.links.document_metadata;
@@ -298,11 +315,16 @@ async function buildMembers(filings, key) {
     if (substance < 40) { scannedDocs.push(f); continue; }
     if (!rawSample) rawSample = text.slice(0, 1500);
     parseTransfers(text).forEach(t => transfers.push(t));
+    if (!capital && !isInc(f)) {
+      const tot = parseCapitalTotal(text);
+      if (tot != null) capital = { total: tot, asAt: chDate(f.date), iso: String(f.date || "") }; // newest-first walk: first hit is the latest position
+    }
     if (current.length === 0) {
       const sh = parseShareholders(text);
       if (sh.length) {
         current = sh;
         source = sourceLabel(f);
+        membersISO = String(f.date || "");
       } else if (isInc(f)) {
         // Newly formed company with no confirmation statement yet: read the
         // initial shareholdings straight from the incorporation document.
@@ -310,6 +332,7 @@ async function buildMembers(filings, key) {
         if (init.length) {
           current = init;
           source = "as at incorporation";
+          membersISO = String(f.date || "");
           init.forEach(s => foundingAllotments.push({
             date: chDate(f.date),
             details: s.shares + (s.cls ? " " + s.cls : "") + " shares allotted to " + titleCaseName(s.name) + " on incorporation"
@@ -350,15 +373,21 @@ async function buildMembers(filings, key) {
     if (!ocrText) continue;
     if (!rawSample) rawSample = ocrText.slice(0, 1500);
     parseTransfers(ocrText).forEach(t => transfers.push(t));
+    if (!capital && !isInc(f)) {
+      const tot = parseCapitalTotal(ocrText);
+      if (tot != null) capital = { total: tot, asAt: chDate(f.date), iso: String(f.date || "") };
+    }
     const sh = parseShareholders(ocrText);
     if (sh.length) {
       current = sh;
       source = sourceLabel(f);
+      membersISO = String(f.date || "");
     } else if (isInc(f)) {
       const init = parseInitialShareholders(ocrText);
       if (init.length) {
         current = init;
         source = "as at incorporation";
+        membersISO = String(f.date || "");
         init.forEach(s => foundingAllotments.push({
           date: chDate(f.date),
           details: s.shares + (s.cls ? " " + s.cls : "") + " shares allotted to " + titleCaseName(s.name) + " on incorporation"
@@ -367,11 +396,16 @@ async function buildMembers(filings, key) {
     }
   }
 
+  // A capital total OLDER than the document the members came from is stale and
+  // would raise a false alarm — suppress it. (Capital newer than the members is
+  // exactly the discrepancy worth flagging, so that survives.)
+  if (capital && membersISO && capital.iso && capital.iso < membersISO) capital = null;
+
   // name, class and share count only — nominal value and address are left blank
   // for the user, to avoid putting guessed figures into a statutory register.
   current = current.map(s => ({ name: s.name, cls: s.cls, shares: s.shares, nominal: "" }));
 
-  return { current, source, transfers, allotments: foundingAllotments, rawSample, ocrDiag };
+  return { current, source, transfers, allotments: foundingAllotments, rawSample, ocrDiag, capital };
 }
 
 function chDate(s) {
