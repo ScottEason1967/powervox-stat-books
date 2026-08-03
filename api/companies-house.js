@@ -294,7 +294,7 @@ async function buildMembers(filings, key) {
   // them outright rather than downloading dead weight. Some "with updates"
   // statements still only restate capital, so each survivor is judged on its
   // actual content and we keep walking until one yields shareholders.
-  const noUpd = f => /no.?updates/i.test(String(f.description || ""));
+  const noUpd = f => /no.?updates|no.?member.?list/i.test(String(f.description || ""));
   const docsToScan = csFilings.filter(f => !noUpd(f)).slice(0, 8);
   if (incFiling) docsToScan.push(incFiling);
 
@@ -306,9 +306,16 @@ async function buildMembers(filings, key) {
   let capital = null; // latest issued-share total seen in a statement of capital
   let membersISO = ""; // filing date of the document the members came from
 
-  for (const f of docsToScan) {
-    const metaUrl = f.links && f.links.document_metadata;
-    const text = await fetchDocumentText(metaUrl, key);
+  // Download all candidate documents IN PARALLEL. Fetching them one after
+  // another was eating 20-30 seconds of the time budget before OCR could even
+  // start, which starved older companies (whose lists live in scanned annual
+  // returns) of their OCR window.
+  const texts = await Promise.all(
+    docsToScan.map(f => fetchDocumentText(f.links && f.links.document_metadata, key))
+  );
+  for (let di = 0; di < docsToScan.length; di++) {
+    const f = docsToScan[di];
+    const text = texts[di];
     // Scanned documents are not empty: pdf-parse returns a few stray whitespace
     // characters. Judge by substance, not truthiness, or OCR never triggers.
     const substance = (text || "").replace(/\s+/g, "").length;
