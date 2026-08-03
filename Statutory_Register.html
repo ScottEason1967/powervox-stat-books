@@ -264,6 +264,7 @@ body.mode-edit .view-only { display: none; }
     <button class="btn ghost-light" id="btnPrint">Print</button>
     <button class="btn ghost-light" id="btnEdit">Edit details</button>
     <button class="btn ghost-light" id="btnLogo">Add your logo</button>
+    <button class="btn ghost-light" id="btnRemoveLogo" style="display:none">Remove logo</button>
     <button class="btn ghost-light" id="btnTheme">Theme from logo</button>
     <button class="btn ghost-light" id="btnResetTheme">Reset theme</button>
     <button class="btn ghost-light" id="btnNew">New company</button>
@@ -659,6 +660,8 @@ function renderMasthead() {
   const lw = document.getElementById("mastheadLogo");
   if (CONFIG.logoUrl) lw.innerHTML = '<img class="logo" src="' + esc(CONFIG.logoUrl) + '" alt="' + esc(c.name || CONFIG.brandName) + '">';
   else lw.innerHTML = '<div class="eyebrow">' + esc(CONFIG.brandName) + '</div>';
+  const rb = document.getElementById("btnRemoveLogo");
+  if (rb) rb.style.display = CONFIG.logoUrl ? "" : "none";
 }
 function renderFooter() {
   const f = data.footer;
@@ -1335,6 +1338,12 @@ function init() {
   document.getElementById("btnEdit").onclick = toggleEdit;
   document.getElementById("btnLogo").onclick = () => document.getElementById("logoInput").click();
   document.getElementById("logoInput").onchange = e => { if (e.target.files[0]) handleLogo(e.target.files[0]); };
+  document.getElementById("btnRemoveLogo").onclick = () => {
+    CONFIG.logoUrl = "";
+    try { localStorage.removeItem(LS_KEY + "_logo"); } catch (e) {}
+    document.getElementById("logoInput").value = "";
+    renderMasthead();
+  };
   document.getElementById("btnTheme").onclick = themeFromLogo;
   document.getElementById("btnResetTheme").onclick = resetTheme;
   document.getElementById("btnNew").onclick = () => { if (confirm("Start a new company? Your current book stays saved in this browser until you replace it.")) { data = blankTemplate(); save(); document.body.classList.remove("ready"); document.getElementById("obNum").value = ""; document.getElementById("obStatus").textContent = ""; } };
