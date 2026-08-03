@@ -150,7 +150,9 @@ function parseShareholders(text) {
   if (!text) return [];
   const out = [];
   const t = text.replace(/\r/g, "");
-  const re = /([\d,]+)\s+([A-Z][A-Z ]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+confirmation\s+statement\s*Name:\s*([^\n\r]+)/gi;
+  // Confirmation statements say "...this confirmation statement"; older annual
+  // returns (AR01) say "...this return". Accept both.
+  const re = /([\d,]+)\s+([A-Z][A-Z ]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+(?:confirmation\s+statement|return)\s*Name:\s*([^\n\r]+)/gi;
   let m;
   while ((m = re.exec(t)) !== null) {
     const shares = parseInt(m[1].replace(/,/g, ""), 10);
@@ -243,6 +245,11 @@ async function buildMembers(filings, key) {
   const isCS = f => /^CS01$/i.test(f.type || "") || (f.category || "") === "confirmation-statement" ||
                     (f.category || "") === "annual-return" || /^363|^AR01/i.test(f.type || "");
   const isInc = f => /^NEWINC$/i.test(f.type || "") || (f.category || "") === "incorporation";
+  const isAR = f => (f.category || "") === "annual-return" || /^363|^AR01/i.test(f.type || "");
+  const sourceLabel = f =>
+    isInc(f) ? "as at incorporation"
+    : isAR(f) ? "per annual return dated " + chDate(f.date)
+    : "per confirmation statement dated " + chDate(f.date);
 
   const csFilings = filings.filter(isCS)
     .sort((a, b) => String(b.date).localeCompare(String(a.date))); // newest first
@@ -250,25 +257,29 @@ async function buildMembers(filings, key) {
 
   let current = [];
   let source = "";
-  const docsToScan = csFilings.slice(0, 5);
+  // Scan back through up to a dozen statements. Some are marked "with updates"
+  // but only restate the capital total (no shareholder list), so we judge each on
+  // its actual content and keep going until one yields shareholders.
+  const docsToScan = csFilings.slice(0, 12);
   if (incFiling) docsToScan.push(incFiling);
 
   const transfers = [];
   const foundingAllotments = [];
+  const scannedDocs = []; // statements with no text layer — OCR candidates
   let rawSample = "";
   let ocrDiag = null;
 
   for (const f of docsToScan) {
     const metaUrl = f.links && f.links.document_metadata;
     const text = await fetchDocumentText(metaUrl, key);
-    if (!text) continue;
+    if (!text) { scannedDocs.push(f); continue; }
     if (!rawSample) rawSample = text.slice(0, 1500);
     parseTransfers(text).forEach(t => transfers.push(t));
     if (current.length === 0) {
       const sh = parseShareholders(text);
       if (sh.length) {
         current = sh;
-        source = isInc(f) ? "as at incorporation" : ("per confirmation statement dated " + chDate(f.date));
+        source = sourceLabel(f);
       } else if (isInc(f)) {
         // Newly formed company with no confirmation statement yet: read the
         // initial shareholdings straight from the incorporation document.
@@ -283,25 +294,39 @@ async function buildMembers(filings, key) {
         }
       }
     }
+    if (current.length) break; // stop at the newest statement that lists shareholders
   }
 
-  // OCR fallback: if the text read found no shareholders, the incorporation
-  // document is likely a scanned image. OCR it and try the reader again.
-  if (!current.length && incFiling) {
-    const buf = await fetchDocumentBuffer(incFiling.links && incFiling.links.document_metadata, key);
-    ocrDiag = { bufferBytes: buf ? buf.length : 0 };
+  // OCR fallback for scanned statements. Many confirmation statements, annual
+  // returns and incorporations are filed as scanned images with no text layer, so
+  // the shareholder list only becomes readable after OCR. Work through the scanned
+  // documents newest first and stop at the first that yields a list. Bounded to a
+  // couple of documents to stay within the function time budget. Pre-2009
+  // incorporations use an unreadable layout, so they are skipped.
+  const MAX_OCR = 2;
+  let ocrTried = 0;
+  for (const f of scannedDocs) {
+    if (current.length || ocrTried >= MAX_OCR) break;
+    if (isInc(f) && !(String(f.date || "") >= "2009-10-01")) continue; // old incorporation: unreadable
+    ocrTried++;
+    const buf = await fetchDocumentBuffer(f.links && f.links.document_metadata, key);
     const ocr = await ocrDocument(buf);
-    ocrDiag = Object.assign(ocrDiag, ocr.diag);
+    ocrDiag = Object.assign({ doc: f.type || f.category || "", bytes: buf ? buf.length : 0 }, ocr.diag);
     const ocrText = ocr.text;
-    if (ocrText) {
-      ocrDiag.parsedFromOcr = parseInitialShareholders(ocrText).length;
-      if (!rawSample) rawSample = ocrText.slice(0, 1500);
+    if (!ocrText) continue;
+    if (!rawSample) rawSample = ocrText.slice(0, 1500);
+    parseTransfers(ocrText).forEach(t => transfers.push(t));
+    const sh = parseShareholders(ocrText);
+    if (sh.length) {
+      current = sh;
+      source = sourceLabel(f);
+    } else if (isInc(f)) {
       const init = parseInitialShareholders(ocrText);
       if (init.length) {
         current = init;
         source = "as at incorporation";
         init.forEach(s => foundingAllotments.push({
-          date: chDate(incFiling.date),
+          date: chDate(f.date),
           details: s.shares + (s.cls ? " " + s.cls : "") + " shares allotted to " + titleCaseName(s.name) + " on incorporation"
         }));
       }
