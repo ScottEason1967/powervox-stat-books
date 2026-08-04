@@ -295,7 +295,13 @@ async function buildMembers(filings, key) {
   // statements still only restate capital, so each survivor is judged on its
   // actual content and we keep walking until one yields shareholders.
   const noUpd = f => /no.?updates|no.?member.?list/i.test(String(f.description || ""));
-  const docsToScan = csFilings.filter(f => !noUpd(f)).slice(0, 8);
+  // Companies House labels the filings that carry a full shareholder list
+  // ("...full-list-shareholders", legacy "full list of members") — trust it.
+  const fullList = f => /full.?list/i.test(String(f.description || "") + " " +
+    String((f.description_values && f.description_values.description) || ""));
+  const informative = csFilings.filter(f => !noUpd(f));
+  // Newest 8, PLUS any full-list filings that would otherwise fall off the end.
+  const docsToScan = [...new Set([...informative.slice(0, 8), ...informative.filter(fullList).slice(0, 4)])];
   if (incFiling) docsToScan.push(incFiling);
 
   const transfers = [];
@@ -305,6 +311,7 @@ async function buildMembers(filings, key) {
   let ocrDiag = null;
   let capital = null; // latest issued-share total seen in a statement of capital
   let membersISO = ""; // filing date of the document the members came from
+  let lastOcrText = ""; // kept so a fruitless OCR can be inspected in the response
 
   // Download all candidate documents IN PARALLEL. Fetching them one after
   // another was eating 20-30 seconds of the time budget before OCR could even
@@ -364,7 +371,12 @@ async function buildMembers(filings, key) {
   const scannedCS = scannedDocs.filter(f => !isInc(f));
   const scannedInc = scannedDocs.filter(isInc)
     .filter(f => String(f.date || "") >= "2009-10-01"); // pre-2009 layout is unreadable
-  const ocrQueue = [...scannedCS.slice(0, 1), ...scannedInc, ...scannedCS.slice(1)];
+  // Documents Companies House labels as carrying the full shareholder list go
+  // FIRST — they are the reason we are OCR-ing at all. Then the newest other
+  // statement, then the incorporation, then the rest.
+  const scannedList = scannedCS.filter(fullList);
+  const scannedRest = scannedCS.filter(f => !fullList(f));
+  const ocrQueue = [...scannedList, ...scannedRest.slice(0, 1), ...scannedInc, ...scannedRest.slice(1)];
 
   const MAX_OCR = 3;
   let ocrTried = 0;
@@ -378,6 +390,7 @@ async function buildMembers(filings, key) {
     ocrDiag = Object.assign({ doc: f.type || f.category || "", bytes: buf ? buf.length : 0 }, ocr.diag);
     const ocrText = ocr.text;
     if (!ocrText) continue;
+    lastOcrText = ocrText;
     if (!rawSample) rawSample = ocrText.slice(0, 1500);
     parseTransfers(ocrText).forEach(t => transfers.push(t));
     if (!capital && !isInc(f)) {
@@ -402,6 +415,10 @@ async function buildMembers(filings, key) {
       }
     }
   }
+
+  // If OCR ran but yielded no members, surface what it actually read — that is
+  // the diagnostic that matters, not the first text document's boilerplate.
+  if (!current.length && lastOcrText) rawSample = lastOcrText.slice(0, 2000);
 
   // A capital total OLDER than the document the members came from is stale and
   // would raise a false alarm — suppress it. (Capital newer than the members is
