@@ -371,19 +371,19 @@ async function buildMembers(filings, key) {
   const scannedCS = scannedDocs.filter(f => !isInc(f));
   const scannedInc = scannedDocs.filter(isInc)
     .filter(f => String(f.date || "") >= "2009-10-01"); // pre-2009 layout is unreadable
-  // Documents Companies House labels as carrying the full shareholder list go
-  // FIRST — they are the reason we are OCR-ing at all. Then the newest other
-  // statement, then the incorporation, then the rest.
-  const scannedList = scannedCS.filter(fullList);
-  const scannedRest = scannedCS.filter(f => !fullList(f));
-  const ocrQueue = [...scannedList, ...scannedRest.slice(0, 1), ...scannedInc, ...scannedRest.slice(1)];
+  // NEWEST FIRST, strictly. A newer with-updates statement supersedes an older
+  // "full list" annual return (WD Close: 2019 statement moved every share to a
+  // holding company; the 2015 return's family list is history, not the present).
+  // The time gates below are generous enough that a dud first document no
+  // longer starves the second — which was the real Teesside problem.
+  const ocrQueue = [...scannedCS, ...scannedInc];
 
   const MAX_OCR = 3;
   let ocrTried = 0;
   for (const f of ocrQueue) {
     if (current.length || ocrTried >= MAX_OCR) break;
     const elapsed = Date.now() - t0;
-    if (isInc(f) ? elapsed > 42000 : elapsed > 28000) continue; // stay inside the 60s function cap
+    if (isInc(f) ? elapsed > 42000 : elapsed > 38000) continue; // stay inside the 60s function cap
     ocrTried++;
     const buf = await fetchDocumentBuffer(f.links && f.links.document_metadata, key);
     const ocr = await ocrDocument(buf, isInc(f) ? 14 : 6, t0 + 50000); // page-level deadline
