@@ -1107,11 +1107,17 @@ function mergeCompaniesHouse(p) {
   (p.officers || []).forEach(o => {
     const raw = o.name || ""; if (!raw) return;
     const disp = displayName(raw);
-    const appointed = chDate(o.appointed_on);
+    // Officers appointed before 1992 predate Companies House's electronic
+    // record: CH sends no appointment date, only a flag. Say so rather than
+    // leaving a blank that looks like an oversight.
+    const pre92 = !!o.is_pre_1992_appointment;
+    let appointed = chDate(o.appointed_on);
+    if (!appointed && pre92) appointed = "Before 1992 (pre-electronic record)";
     const resigned = o.resigned_on ? chDate(o.resigned_on) : "";
     if (!resigned) {
-      const exists = data.directors.current.some(d => sameName(d.name, disp) && d.appointed === appointed);
-      if (!exists) { data.directors.current.push({ name: disp, serviceAddress: addrToString(o.address), appointed: appointed, status: "in office" }); log.push({ kind: "added", msg: "director " + disp }); }
+      const existing = data.directors.current.find(d => sameName(d.name, disp));
+      if (!existing) { data.directors.current.push({ name: disp, serviceAddress: addrToString(o.address), appointed: appointed, status: "in office" }); log.push({ kind: "added", msg: "director " + disp }); }
+      else if (!existing.appointed && appointed) existing.appointed = appointed; // heal blanks on update
     }
     let card = data.directors.history.find(c => sameName(c.name, disp));
     if (!card) { card = { name: disp, note: officerNote(o), rows: [] }; data.directors.history.push(card); }
