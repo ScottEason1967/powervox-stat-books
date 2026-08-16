@@ -93,7 +93,8 @@ body.ready #onboard { display: none; }
 .savestate { font-size: 11.5px; color: rgba(255,255,255,.6); width: 100%; text-align: right; margin-top: 2px; }
 @media (min-width: 720px) { .savestate { width: auto; margin-top: 0; } }
 
-.page { max-width: 1080px; margin: 0 auto; background: #fff; border: 1px solid var(--line); }
+.page { max-width: 1080px; margin: 0 auto; background: #fff; border: 1px solid var(--line); position: relative; }
+.stamp { position: absolute; top: 14px; right: 20px; font-size: 11.5px; line-height: 1.5; color: var(--muted); text-align: right; }
 
 /* masthead band (echoes the site hero) */
 header.masthead { background: radial-gradient(900px 400px at 50% -40%, #34704A 0%, var(--forest) 55%, var(--forest-deep) 100%);
@@ -274,6 +275,7 @@ body.mode-edit .view-only { display: none; }
   </div>
 
   <div class="page">
+    <div class="stamp" id="pageStamp"></div>
     <header class="masthead">
       <div id="mastheadLogo"></div>
       <h1 id="mhName">Company Name Limited</h1>
@@ -480,8 +482,31 @@ function loadFromStorage() {
   catch (e) { return null; }
 }
 function save() {
+  const now = new Date().toISOString();
+  if (data.footer) {
+    if (!data.footer.createdAt) data.footer.createdAt = now;
+    data.footer.updatedAt = now;
+  }
   try { localStorage.setItem(LS_KEY, JSON.stringify(data)); setSaveState("Saved automatically"); }
   catch (e) { setSaveState(""); }
+  renderStamp();
+}
+function stampFormat(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) +
+    ", " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+function renderStamp() {
+  const el = document.getElementById("pageStamp");
+  if (!el || !data.footer) return;
+  const c = stampFormat(data.footer.createdAt);
+  const u = stampFormat(data.footer.updatedAt);
+  let h = "";
+  if (c) h += "Created: " + esc(c);
+  if (u && u !== c) h += (h ? "<br>" : "") + "Last updated: " + esc(u);
+  el.innerHTML = h;
 }
 function setSaveState(msg) { const el = document.getElementById("saveState"); if (el) el.textContent = msg; }
 function hasData() { return !!(data && data.company && data.company.name); }
@@ -896,7 +921,7 @@ function delRow(listPath, idx) { getByPath(listPath).splice(idx, 1); save(); ren
 function showBook() {
   document.body.classList.remove("mode-edit");
   document.getElementById("btnEdit").textContent = "Edit details";
-  renderView(); renderHealth(); renderStatusFlag(); renderReconcileFlag();
+  renderView(); renderHealth(); renderStatusFlag(); renderReconcileFlag(); renderStamp();
 }
 function renderStatusFlag() {
   const el = document.getElementById("statusFlag");
