@@ -416,6 +416,53 @@ async function buildMembers(filings, key) {
     }
   }
 
+  // ---- Infer membership changes by comparing the last two lists --------------
+  // Some statements (e.g. a whole-company transfer to a holding company) present
+  // the NEW list with no transfer lines. The change is then only visible by
+  // diffing against the previous full list. Only runs when no explicit transfer
+  // lines were found — explicit lines are better evidence and stay authoritative.
+  if (current.length && membersISO && transfers.length === 0) {
+    let previous = [];
+    let prevSourceDate = "";
+    // Free pass first: any already-downloaded text document older than the members doc.
+    for (let di = 0; di < docsToScan.length; di++) {
+      const f = docsToScan[di];
+      if (isInc(f) || String(f.date || "") >= membersISO) continue;
+      const sh = parseShareholders(texts[di] || "");
+      if (sh.length) { previous = sh; prevSourceDate = chDate(f.date); break; }
+    }
+    // Paid pass: OCR the newest older scanned document, preferring ones
+    // Companies House labels as carrying a full list.
+    if (!previous.length && ocrTried < MAX_OCR && Date.now() - t0 < 38000) {
+      const prevDoc = scannedCS.find(f => String(f.date || "") < membersISO && fullList(f)) ||
+                      scannedCS.find(f => String(f.date || "") < membersISO);
+      if (prevDoc) {
+        ocrTried++;
+        const buf = await fetchDocumentBuffer(prevDoc.links && prevDoc.links.document_metadata, key);
+        const ocr = await ocrDocument(buf, 6, t0 + 50000);
+        if (ocr.text) {
+          const sh = parseShareholders(ocr.text);
+          if (sh.length) { previous = sh; prevSourceDate = chDate(prevDoc.date); }
+        }
+      }
+    }
+    if (previous.length) {
+      const nkey = s => s.name.replace(/[^a-z0-9]/gi, "").toLowerCase();
+      const curMap = new Map(current.map(s => [nkey(s), s]));
+      const prevMap = new Map(previous.map(s => [nkey(s), s]));
+      const asAt = chDate(membersISO);
+      const bracket = " (change occurred between " + prevSourceDate + " and " + asAt + "; exact date not on the public record)";
+      previous.forEach(p => {
+        const c = curMap.get(nkey(p));
+        if (!c) transfers.push({ date: asAt, detail: titleCaseName(p.name) + " ceased to be a member — previously held " + p.shares + (p.cls ? " " + p.cls : "") + " shares" + bracket });
+        else if (c.shares !== p.shares) transfers.push({ date: asAt, detail: titleCaseName(p.name) + " — holding changed from " + p.shares + " to " + c.shares + (c.cls ? " " + c.cls : "") + " shares" + bracket });
+      });
+      current.forEach(c => {
+        if (!prevMap.get(nkey(c))) transfers.push({ date: asAt, detail: titleCaseName(c.name) + " became a member — " + c.shares + (c.cls ? " " + c.cls : "") + " shares" + bracket });
+      });
+    }
+  }
+
   // If OCR ran but yielded no members, surface what it actually read — that is
   // the diagnostic that matters, not the first text document's boilerplate.
   if (!current.length && lastOcrText) rawSample = lastOcrText.slice(0, 2000);
