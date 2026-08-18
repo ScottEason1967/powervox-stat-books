@@ -1194,10 +1194,14 @@ function mergeCompaniesHouse(p) {
     data.members.publicCapital = { total: p.members.capital.total, asAt: p.members.capital.asAt || "" };
   }
   if (p.members && Array.isArray(p.members.transfers)) {
+    // Machine-written transfer rows are REPLACED on every update, not appended —
+    // wording evolves between versions and weak matching left the same event
+    // recorded several times. Rows the user has edited (different filing text)
+    // are left alone.
+    data.allotments.rows = data.allotments.rows.filter(r => !(r.type === "Transfer" && r.filing === "Per confirmation statement"));
     p.members.transfers.forEach(tr => {
       if (!tr || (!tr.date && !tr.detail)) return;
-      const exists = data.allotments.rows.some(r => r.date === tr.date && (r.details || "").indexOf(tr.detail) >= 0);
-      if (!exists) data.allotments.rows.push({ date: tr.date || "", type: "Transfer", details: tr.detail || "Share transfer", filing: "Per confirmation statement", hl: "" });
+      data.allotments.rows.push({ date: tr.date || "", type: "Transfer", details: tr.detail || "Share transfer", filing: "Per confirmation statement", hl: "" });
     });
   }
   if (p.members && Array.isArray(p.members.allotments)) {

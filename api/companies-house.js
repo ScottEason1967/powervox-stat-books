@@ -454,8 +454,9 @@ async function buildMembers(filings, key) {
       const sh = parseShareholders(texts[di] || "");
       if (sh.length) { previous = sh; prevSourceDate = chDate(f.date); break; }
     }
-    // Paid pass (OCR) only when there are no explicit lines to anchor the story.
-    if (!previous.length && transferLines.length === 0 && ocrTried < MAX_OCR && Date.now() - t0 < 38000) {
+    // Paid pass (OCR). Worth a slot even when explicit lines exist — the
+    // previous list is what names the transferee.
+    if (!previous.length && ocrTried < MAX_OCR && Date.now() - t0 < 38000) {
       const prevDoc = scannedCS.find(f => String(f.date || "") < membersISO && fullList(f)) ||
                       scannedCS.find(f => String(f.date || "") < membersISO);
       if (prevDoc) {
@@ -490,17 +491,23 @@ async function buildMembers(filings, key) {
   const balanced = ins.length > 0 && outs.length > 0 && sumOf(ins) === sumOf(outs);
 
   if (transferLines.length) {
+    // Pair each explicit line with a recipient. Three rules, in order of
+    // strength: (1) everything sums to a single gainer — all lines go there;
+    // (2) a line's count uniquely matches one gainer's remaining gain — pair
+    // and CONSUME it so it cannot be matched twice; (3) otherwise say less.
+    const linesTotal = transferLines.reduce((a, l) => a + l.count, 0);
+    const insPool = ins.map(i => ({ name: i.name, cls: i.cls, left: i.count }));
+    const singleTarget = (insPool.length === 1 && insPool[0].left === linesTotal) ? insPool[0].name : "";
     transferLines.forEach(L => {
-      let to = "";
-      if (balanced && ins.length === 1) to = ins[0].name;
-      else {
-        const matches = ins.filter(i => i.count === L.count && (!L.cls || !i.cls || i.cls === L.cls));
-        if (matches.length === 1) to = matches[0].name;
+      let to = singleTarget;
+      if (!to) {
+        const m = insPool.filter(i => i.left === L.count && (!L.cls || !i.cls || i.cls === L.cls));
+        if (m.length === 1) { to = m[0].name; m[0].left -= L.count; }
       }
       let d = L.count + (L.cls ? " " + L.cls : "") + " shares transferred";
       if (L.from) d += " from " + titleCaseName(L.from);
       if (to) d += " to " + titleCaseName(to);
-      else d += " (transferee not stated on the public record)";
+      else d += " (transferee not identifiable from the public record)";
       transfers.push({ date: L.dateDisp, detail: d });
     });
   } else if (ins.length || outs.length) {
@@ -529,7 +536,16 @@ async function buildMembers(filings, key) {
   // for the user, to avoid putting guessed figures into a statutory register.
   current = current.map(s => ({ name: s.name, cls: s.cls, shares: s.shares, nominal: "" }));
 
-  return { current, source, transfers, allotments: foundingAllotments, rawSample, ocrDiag, capital };
+  // Exact duplicates (same event parsed from more than one document) collapse.
+  const seenT = new Set();
+  const uniqueTransfers = transfers.filter(t => {
+    const k = t.date + "|" + t.detail;
+    if (seenT.has(k)) return false;
+    seenT.add(k);
+    return true;
+  });
+
+  return { current, source, transfers: uniqueTransfers, allotments: foundingAllotments, rawSample, ocrDiag, capital };
 }
 
 function chDate(s) {
