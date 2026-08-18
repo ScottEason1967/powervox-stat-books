@@ -245,19 +245,40 @@ function parseCapitalTotal(text) {
   return seen ? sum : null;
 }
 
-// Returns [{ date, detail }]
-// Real layout: "<count> transferred on YYYY-MM-DD" (class and parties are not
-// given on that line), so we record the count and date only.
+// Returns rich transfer lines: [{ dateISO, dateDisp, count, cls, from }].
+// Each "Shareholding N" block names its holder; a "<count> transferred on
+// <date>" line inside the block is shares moving OUT of that holding, so the
+// named holder is the TRANSFEROR. The transferee is never stated in the block —
+// it is inferred later by comparing against the previous shareholder list.
 function parseTransfers(text) {
   if (!text) return [];
   const out = [];
   const t = text.replace(/\r/g, "");
-  const re = /([\d,]+)\s+transferred\s+on\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/gi;
-  let m;
-  while ((m = re.exec(t)) !== null) {
-    const shares = m[1].replace(/,/g, "");
-    const date = /^\d{4}-/.test(m[2]) ? chDate(m[2]) : normaliseDate(m[2]);
-    out.push({ date: date, detail: shares + " shares transferred" });
+  const blockRe = /Shareholding\s+\d+\s*[:\-]?\s*([^]*?)Name:\s*([^\n]+)/gi;
+  let b;
+  while ((b = blockRe.exec(t)) !== null) {
+    const body = b[1];
+    if (body.length > 600) continue; // runaway match, not a real block
+    const from = cleanName(b[2]);
+    const clsM = /[\d,]+\s+([A-Z][A-Z ]*?)\s+shares\s+held\s+as\s+at/i.exec(body);
+    const cls = clsM ? normaliseClass(clsM[1]) : "";
+    const lineRe = /([\d,]+)\s+transferred\s+on\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/gi;
+    let m;
+    while ((m = lineRe.exec(body)) !== null) {
+      const count = parseInt(m[1].replace(/,/g, ""), 10);
+      const iso = /^\d{4}-/.test(m[2]) ? m[2] : "";
+      if (count > 0) out.push({ dateISO: iso, dateDisp: iso ? chDate(iso) : normaliseDate(m[2]), count, cls, from });
+    }
+  }
+  if (!out.length) {
+    // Defensive fallback for layouts where the block structure was not matched.
+    const re = /([\d,]+)\s+transferred\s+on\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/gi;
+    let m;
+    while ((m = re.exec(t)) !== null) {
+      const count = parseInt(m[1].replace(/,/g, ""), 10);
+      const iso = /^\d{4}-/.test(m[2]) ? m[2] : "";
+      if (count > 0) out.push({ dateISO: iso, dateDisp: iso ? chDate(iso) : normaliseDate(m[2]), count, cls: "", from: "" });
+    }
   }
   return out;
 }
@@ -304,7 +325,8 @@ async function buildMembers(filings, key) {
   const docsToScan = [...new Set([...informative.slice(0, 8), ...informative.filter(fullList).slice(0, 4)])];
   if (incFiling) docsToScan.push(incFiling);
 
-  const transfers = [];
+  const transfers = [];       // final register entries [{ date, detail }]
+  const transferLines = [];   // rich parsed lines awaiting transferee pairing
   const foundingAllotments = [];
   const scannedDocs = []; // statements with no text layer — OCR candidates
   let rawSample = "";
@@ -328,7 +350,7 @@ async function buildMembers(filings, key) {
     const substance = (text || "").replace(/\s+/g, "").length;
     if (substance < 40) { scannedDocs.push(f); continue; }
     if (!rawSample) rawSample = text.slice(0, 1500);
-    parseTransfers(text).forEach(t => transfers.push(t));
+    parseTransfers(text).forEach(t => transferLines.push(t));
     if (!capital && !isInc(f)) {
       const tot = parseCapitalTotal(text);
       if (tot != null) capital = { total: tot, asAt: chDate(f.date), iso: String(f.date || "") }; // newest-first walk: first hit is the latest position
@@ -392,7 +414,7 @@ async function buildMembers(filings, key) {
     if (!ocrText) continue;
     lastOcrText = ocrText;
     if (!rawSample) rawSample = ocrText.slice(0, 1500);
-    parseTransfers(ocrText).forEach(t => transfers.push(t));
+    parseTransfers(ocrText).forEach(t => transferLines.push(t));
     if (!capital && !isInc(f)) {
       const tot = parseCapitalTotal(ocrText);
       if (tot != null) capital = { total: tot, asAt: chDate(f.date), iso: String(f.date || "") };
@@ -416,24 +438,24 @@ async function buildMembers(filings, key) {
     }
   }
 
-  // ---- Infer membership changes by comparing the last two lists --------------
-  // Some statements (e.g. a whole-company transfer to a holding company) present
-  // the NEW list with no transfer lines. The change is then only visible by
-  // diffing against the previous full list. Only runs when no explicit transfer
-  // lines were found — explicit lines are better evidence and stay authoritative.
-  if (current.length && membersISO && transfers.length === 0) {
-    let previous = [];
-    let prevSourceDate = "";
-    // Free pass first: any already-downloaded text document older than the members doc.
+  // ---- Build the transfer register: from whom, to whom -----------------------
+  // Explicit "transferred on" lines give the transferor (the holder of the block
+  // they sit in) and the exact date. The transferee is never stated, and some
+  // statements carry no transfer lines at all — both gaps are closed by diffing
+  // against the PREVIOUS shareholder list, and pairing only when the arithmetic
+  // is unambiguous. Where it isn't, the register says less rather than guessing.
+  let previous = [];
+  let prevSourceDate = "";
+  if (current.length && membersISO) {
+    // Free pass: any already-downloaded text document older than the members doc.
     for (let di = 0; di < docsToScan.length; di++) {
       const f = docsToScan[di];
       if (isInc(f) || String(f.date || "") >= membersISO) continue;
       const sh = parseShareholders(texts[di] || "");
       if (sh.length) { previous = sh; prevSourceDate = chDate(f.date); break; }
     }
-    // Paid pass: OCR the newest older scanned document, preferring ones
-    // Companies House labels as carrying a full list.
-    if (!previous.length && ocrTried < MAX_OCR && Date.now() - t0 < 38000) {
+    // Paid pass (OCR) only when there are no explicit lines to anchor the story.
+    if (!previous.length && transferLines.length === 0 && ocrTried < MAX_OCR && Date.now() - t0 < 38000) {
       const prevDoc = scannedCS.find(f => String(f.date || "") < membersISO && fullList(f)) ||
                       scannedCS.find(f => String(f.date || "") < membersISO);
       if (prevDoc) {
@@ -446,20 +468,51 @@ async function buildMembers(filings, key) {
         }
       }
     }
-    if (previous.length) {
-      const nkey = s => s.name.replace(/[^a-z0-9]/gi, "").toLowerCase();
-      const curMap = new Map(current.map(s => [nkey(s), s]));
-      const prevMap = new Map(previous.map(s => [nkey(s), s]));
-      const asAt = chDate(membersISO);
-      const bracket = " (change occurred between " + prevSourceDate + " and " + asAt + "; exact date not on the public record)";
-      previous.forEach(p => {
-        const c = curMap.get(nkey(p));
-        if (!c) transfers.push({ date: asAt, detail: titleCaseName(p.name) + " ceased to be a member — previously held " + p.shares + (p.cls ? " " + p.cls : "") + " shares" + bracket });
-        else if (c.shares !== p.shares) transfers.push({ date: asAt, detail: titleCaseName(p.name) + " — holding changed from " + p.shares + " to " + c.shares + (c.cls ? " " + c.cls : "") + " shares" + bracket });
-      });
-      current.forEach(c => {
-        if (!prevMap.get(nkey(c))) transfers.push({ date: asAt, detail: titleCaseName(c.name) + " became a member — " + c.shares + (c.cls ? " " + c.cls : "") + " shares" + bracket });
-      });
+  }
+  // Movements between the two lists: who lost shares, who gained.
+  const nkey = s => String(s.name || s).replace(/[^a-z0-9]/gi, "").toLowerCase();
+  const ins = [], outs = [];
+  if (previous.length) {
+    const curMap = new Map(current.map(s => [nkey(s), s]));
+    const prevMap = new Map(previous.map(s => [nkey(s), s]));
+    previous.forEach(p => {
+      const c = curMap.get(nkey(p));
+      if (!c) outs.push({ name: p.name, count: p.shares, cls: p.cls });
+      else if (c.shares < p.shares) outs.push({ name: p.name, count: p.shares - c.shares, cls: p.cls });
+    });
+    current.forEach(c => {
+      const p = prevMap.get(nkey(c));
+      if (!p) ins.push({ name: c.name, count: c.shares, cls: c.cls });
+      else if (c.shares > p.shares) ins.push({ name: c.name, count: c.shares - p.shares, cls: c.cls });
+    });
+  }
+  const sumOf = a => a.reduce((x, y) => x + y.count, 0);
+  const balanced = ins.length > 0 && outs.length > 0 && sumOf(ins) === sumOf(outs);
+
+  if (transferLines.length) {
+    transferLines.forEach(L => {
+      let to = "";
+      if (balanced && ins.length === 1) to = ins[0].name;
+      else {
+        const matches = ins.filter(i => i.count === L.count && (!L.cls || !i.cls || i.cls === L.cls));
+        if (matches.length === 1) to = matches[0].name;
+      }
+      let d = L.count + (L.cls ? " " + L.cls : "") + " shares transferred";
+      if (L.from) d += " from " + titleCaseName(L.from);
+      if (to) d += " to " + titleCaseName(to);
+      else d += " (transferee not stated on the public record)";
+      transfers.push({ date: L.dateDisp, detail: d });
+    });
+  } else if (ins.length || outs.length) {
+    const asAt = chDate(membersISO);
+    const bracket = " (change occurred between " + prevSourceDate + " and " + asAt + "; exact date not on the public record)";
+    if (balanced && ins.length === 1) {
+      outs.forEach(o => transfers.push({ date: asAt, detail: o.count + (o.cls ? " " + o.cls : "") + " shares transferred from " + titleCaseName(o.name) + " to " + titleCaseName(ins[0].name) + bracket }));
+    } else if (balanced && outs.length === 1) {
+      ins.forEach(i => transfers.push({ date: asAt, detail: i.count + (i.cls ? " " + i.cls : "") + " shares transferred from " + titleCaseName(outs[0].name) + " to " + titleCaseName(i.name) + bracket }));
+    } else {
+      outs.forEach(o => transfers.push({ date: asAt, detail: titleCaseName(o.name) + " ceased to hold " + o.count + (o.cls ? " " + o.cls : "") + " shares" + bracket }));
+      ins.forEach(i => transfers.push({ date: asAt, detail: titleCaseName(i.name) + " acquired " + i.count + (i.cls ? " " + i.cls : "") + " shares" + bracket }));
     }
   }
 
