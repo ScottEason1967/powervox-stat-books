@@ -918,7 +918,46 @@ function delRow(listPath, idx) { getByPath(listPath).splice(idx, 1); save(); ren
 /* ============================================================
    MODE: book vs edit
    ============================================================ */
+// Collapse machine-written transfer rows that describe the SAME event in
+// different generations of wording. Keyed by date + share count + class; the
+// richest wording wins (a named transferee beats an unnamed one). A bare
+// "N shares transferred" row is dropped whenever classed rows exist for the
+// same date and count — it adds nothing. Runs on every open, so a register
+// polluted by earlier versions heals itself without user action.
+function sanitiseMachineTransfers() {
+  const rows = (data.allotments && data.allotments.rows) || [];
+  const machine = r => r && r.type === "Transfer" && r.filing === "Per confirmation statement";
+  const parse = r => {
+    const m = /^([\d,]+)\s+(.*?)\s*shares transferred/i.exec((r.details || "").trim());
+    return m ? { count: m[1].replace(/,/g, ""), cls: (m[2] || "").trim().toLowerCase() } : null;
+  };
+  const score = r => ((r.details || "").indexOf(" to ") >= 0 ? 2 : 0) +
+                     ((r.details || "").indexOf("not identifiable") >= 0 ? 1 : 0);
+  const classed = new Set();
+  rows.forEach(r => { if (machine(r)) { const p = parse(r); if (p && p.cls) classed.add(r.date + "|" + p.count); } });
+  const keep = [];
+  const groups = new Map();
+  let changed = false;
+  rows.forEach(r => {
+    if (!machine(r)) { keep.push(r); return; }
+    const p = parse(r);
+    if (!p) { keep.push(r); return; }
+    if (!p.cls && classed.has(r.date + "|" + p.count)) { changed = true; return; } // bare duplicate — drop
+    const k = r.date + "|" + p.count + "|" + p.cls;
+    if (groups.has(k)) {
+      const idx = groups.get(k);
+      if (score(r) > score(keep[idx])) keep[idx] = r;
+      changed = true;
+      return;
+    }
+    groups.set(k, keep.length);
+    keep.push(r);
+  });
+  if (changed) data.allotments.rows = keep;
+  return changed;
+}
 function showBook() {
+  if (sanitiseMachineTransfers()) save();
   document.body.classList.remove("mode-edit");
   document.getElementById("btnEdit").textContent = "Edit details";
   renderView(); renderHealth(); renderStatusFlag(); renderReconcileFlag(); renderStamp();
