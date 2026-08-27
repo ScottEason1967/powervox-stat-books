@@ -95,12 +95,15 @@ body.ready #onboard { display: none; }
 @media (min-width: 720px) { .savestate { width: auto; margin-top: 0; } }
 
 .page { max-width: 1080px; margin: 0 auto; background: #fff; border: 1px solid var(--line); position: relative; }
-.stamp { position: absolute; top: 14px; right: 20px; font-size: 11.5px; line-height: 1.5; color: var(--muted); text-align: right; }
+.stamp { position: absolute; top: 14px; right: 20px; font-size: 11.5px; line-height: 1.5; color: #D9BE93; text-align: right; }
+.appbar .logochip { display: inline-flex; align-items: center; background: #fff; border-radius: 8px; padding: 5px 12px; margin-right: auto; }
+.appbar .logochip img { height: 26px; display: block; }
 
 /* masthead band (echoes the site hero) */
-header.masthead { background: radial-gradient(900px 400px at 50% -40%, #34704A 0%, var(--forest) 55%, var(--forest-deep) 100%);
+header.masthead { background: radial-gradient(900px 400px at 50% -40%, #C21247 0%, var(--forest) 55%, var(--forest-deep) 100%);
   color: #fff; padding: 44px 48px 34px; text-align: center; }
-header.masthead .logo { max-width: 300px; max-height: 84px; height: auto; margin-bottom: 14px; }
+header.masthead .logo { max-width: 300px; max-height: 84px; height: auto; margin-bottom: 14px;
+  background: #fff; padding: 12px 20px; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.12); }
 header.masthead .logotext { font-family: var(--serif); font-size: 30px; font-weight: 600; color: #fff; }
 header.masthead .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .3em; font-size: 11px; font-weight: 600; color: var(--gold); margin-bottom: 14px; }
 header.masthead h1 { font-family: var(--serif); margin: 0 0 6px; font-size: 30px; font-weight: 600; color: #fff; letter-spacing: .2px; }
@@ -176,6 +179,10 @@ details .inner { padding: 8px 16px 16px; border-top: 1px solid var(--line); back
 .tile .t { font-family: var(--serif); font-size: 16px; color: var(--forest); font-weight: 600; }
 .tile .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
 .tile .soon { display: inline-block; margin-top: 10px; font-family: var(--sans); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); background: #FBF0D6; padding: 3px 8px; border-radius: 4px; }
+a.tile { display: block; text-decoration: none; transition: border-color .15s, box-shadow .15s; }
+a.tile:hover { border-color: var(--gold); box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.tile .partnerlogo { height: 30px; display: block; margin-bottom: 10px; }
+.tile .go { display: inline-block; margin-top: 10px; font-family: var(--sans); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: #fff; background: var(--gold); padding: 3px 8px; border-radius: 4px; }
 
 footer { font-family: var(--sans); background: var(--sage-soft); border-top: 1px solid var(--stone); padding: 24px 48px; font-size: 12.5px; color: var(--muted); }
 footer strong { color: var(--ink); }
@@ -226,6 +233,8 @@ body.mode-edit .view-only { display: none; }
   header.masthead h1, header.masthead .logotext { color: var(--forest) !important; }
   header.masthead .eyebrow, header.masthead .doctitle { color: var(--gold-deep) !important; }
   header.masthead .subtitle { color: var(--muted) !important; }
+  .stamp { color: var(--gold-deep) !important; }
+  header.masthead .logo { box-shadow: none; padding: 0; }
   main { padding: 16px 24px; }
   section { page-break-inside: avoid; }
   details { border: none; background: transparent; }
@@ -312,8 +321,12 @@ body.mode-edit .view-only { display: none; }
       <div class="tiles">
         <div class="tile"><div class="t">Shareholders' agreement</div><div class="d">A clear agreement between owners, ready to tailor.</div><span class="soon">Coming soon</span></div>
         <div class="tile"><div class="t">Template contracts</div><div class="d">The everyday agreements a growing company needs.</div><span class="soon">Coming soon</span></div>
-        <div class="tile"><div class="t">Cash flow forecast</div><div class="d">See what's coming, plan with confidence.</div><span class="soon">Coming soon</span></div>
-        <div class="tile"><div class="t">Tax at a glance</div><div class="d">A simple read on what you'll owe and when.</div><span class="soon">Coming soon</span></div>
+        <a class="tile" href="https://www.tlcaccountants.com/" target="_blank" rel="noopener">
+          <img class="partnerlogo" src="https://www.tlcaccountants.com/wp-content/themes/tlc-accountants2/assets/images/tlc-logo.png" alt="TLC Accountants">
+          <div class="t">Accountancy &amp; tax</div>
+          <div class="d">Accounts, tax, payroll and company filings from our trusted partners at TLC Accountants — friendly, modern and genuinely on your side.</div>
+          <span class="go">Visit TLC Accountants</span>
+        </a>
       </div>
     </div>
 
@@ -1440,6 +1453,9 @@ function init() {
   document.getElementById("btnDownload").onclick = exportRegister;
   document.getElementById("btnPrint").onclick = () => window.print();
   document.getElementById("btnEdit").onclick = toggleEdit;
+  // Nav bar: small logo on a white chip so the crimson mark doesn't sink into the red bar.
+  document.getElementById("appBrand").innerHTML =
+    '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
   document.getElementById("btnLogo").onclick = () => document.getElementById("logoInput").click();
   document.getElementById("logoInput").onchange = e => { if (e.target.files[0]) handleLogo(e.target.files[0]); };
   document.getElementById("btnRemoveLogo").onclick = () => {
