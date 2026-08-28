@@ -56,6 +56,8 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
   padding: 40px 20px; }
 #onboard .card { width: 100%; max-width: 560px; text-align: center; color: #fff; }
 #onboard .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .34em; font-size: 12px; font-weight: 600; color: var(--gold); margin: 0 0 18px; }
+#onboard .ob-brand { display: inline-block; background: #fff; border-radius: 12px; padding: 12px 22px; margin: 0 0 22px; box-shadow: 0 1px 8px rgba(0,0,0,.15); }
+#onboard .ob-brand img { height: 46px; display: block; }
 #onboard h1 { font-family: var(--serif); font-weight: 600; font-size: 40px; line-height: 1.15; margin: 0 0 14px; color: #fff; }
 #onboard .lede { font-family: var(--serif); font-style: italic; font-size: 19px; color: var(--gold); margin: 0 0 22px; }
 #onboard p.help { font-size: 14.5px; color: rgba(255,255,255,.82); margin: 0 auto 26px; max-width: 460px; }
@@ -251,7 +253,7 @@ body.mode-edit .view-only { display: none; }
 <!-- ============================ ONBOARDING ============================ -->
 <div id="onboard">
   <div class="card">
-    <p class="eyebrow">Eason Law</p>
+    <div class="ob-brand" id="obBrand"></div>
     <h1>Your statutory books,<br>in good order.</h1>
     <p class="lede">Enter your company name or number. We do the rest.</p>
     <p class="help">We build your full statutory register from the public record, so you are organised, compliant, and ready for anything from a bank to a buyer.</p>
@@ -1456,6 +1458,9 @@ function init() {
   // Nav bar: small logo on a white chip so the crimson mark doesn't sink into the red bar.
   document.getElementById("appBrand").innerHTML =
     '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
+  // Onboarding hero: the real logo on the same white chip, replacing the text eyebrow.
+  const ob = document.getElementById("obBrand");
+  if (ob) ob.innerHTML = '<img src="' + EL_LOGO + '" alt="Eason Law">';
   document.getElementById("btnLogo").onclick = () => document.getElementById("logoInput").click();
   document.getElementById("logoInput").onchange = e => { if (e.target.files[0]) handleLogo(e.target.files[0]); };
   document.getElementById("btnRemoveLogo").onclick = () => {
