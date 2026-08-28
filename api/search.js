@@ -10,6 +10,14 @@ const BASE = "https://api.company-information.service.gov.uk";
 module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 
+  // Same gate as the pull — the whole product sits behind the subscription.
+  const { requireSubscriber } = require("./_auth.js");
+  const gate = await requireSubscriber(req);
+  if (!gate.ok) {
+    res.statusCode = gate.code;
+    return res.end(JSON.stringify({ error: gate.msg, gate: gate.code === 402 ? "subscribe" : "signin" }));
+  }
+
   const key = process.env.CH_API_KEY;
   if (!key) {
     res.statusCode = 500;

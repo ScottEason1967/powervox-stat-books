@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 /* ============================================================
    Eason Law Statutory Registers — brand tokens
@@ -58,6 +59,15 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 #onboard .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .34em; font-size: 12px; font-weight: 600; color: var(--gold); margin: 0 0 18px; }
 #onboard .ob-brand { display: inline-block; background: #fff; border-radius: 12px; padding: 12px 22px; margin: 0 0 22px; box-shadow: 0 1px 8px rgba(0,0,0,.15); }
 #onboard .ob-brand img { height: 46px; display: block; }
+#onboard .authbox { max-width: 340px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+#onboard .authbox input { font: inherit; font-size: 15px; padding: 12px 15px; border: 1px solid rgba(255,255,255,.4); border-radius: 6px; background: rgba(255,255,255,.97); color: var(--ink); width: 100%; box-sizing: border-box; }
+#onboard .authalt { font-size: 12.5px; color: rgba(255,255,255,.8); margin: 4px 0 0; }
+#onboard .authalt a { color: #fff; text-decoration: underline; cursor: pointer; }
+#onboard .bookrow { display: flex; align-items: center; gap: 10px; }
+#onboard .bookrow .res { flex: 1; }
+#onboard .bookrow .del { flex: none; background: transparent; border: 1px solid rgba(255,255,255,.4); color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 6px 9px; }
+#onboard .bookrow .del:hover { background: rgba(255,255,255,.15); }
+#onboard .bookshead { font-family: var(--sans); text-transform: uppercase; letter-spacing: .22em; font-size: 10.5px; font-weight: 600; color: var(--gold); margin: 0 0 8px; text-align: left; }
 #onboard h1 { font-family: var(--serif); font-weight: 600; font-size: 40px; line-height: 1.15; margin: 0 0 14px; color: #fff; }
 #onboard .lede { font-family: var(--serif); font-style: italic; font-size: 19px; color: var(--gold); margin: 0 0 22px; }
 #onboard p.help { font-size: 14.5px; color: rgba(255,255,255,.82); margin: 0 auto 26px; max-width: 460px; }
@@ -257,6 +267,36 @@ body.mode-edit .view-only { display: none; }
     <h1>Your statutory books,<br>in good order.</h1>
     <p class="lede">Enter your company name or number. We do the rest.</p>
     <p class="help">We build your full statutory register from the public record, so you are organised, compliant, and ready for anything from a bank to a buyer.</p>
+
+    <!-- Account states: sign in → subscribe → your books. JS shows one at a time. -->
+    <div id="authPanel" style="display:none;">
+      <div class="authbox">
+        <input type="email" id="authEmail" placeholder="Email address" autocomplete="email">
+        <input type="password" id="authPass" placeholder="Password" autocomplete="current-password">
+        <button class="btn gold" id="authGo">Sign in</button>
+        <p class="authalt"><a id="authToggle">New here? Create an account</a> &nbsp;·&nbsp; <a id="authForgot">Forgotten password</a></p>
+        <p class="ob-status" id="authStatus"></p>
+      </div>
+    </div>
+    <div id="recoverPanel" style="display:none;">
+      <div class="authbox">
+        <p class="help" style="margin-bottom:14px;">Choose a new password.</p>
+        <input type="password" id="recoverPass" placeholder="New password" autocomplete="new-password">
+        <button class="btn gold" id="recoverGo">Set password</button>
+        <p class="ob-status" id="recoverStatus"></p>
+      </div>
+    </div>
+    <div id="subPanel" style="display:none;">
+      <div class="authbox">
+        <p class="help" style="margin-bottom:16px;">Your account is ready. A subscription keeps your statutory books built, checked and updated — £14.99 a month per company, cancel any time.</p>
+        <button class="btn gold" id="subGo">Subscribe — £14.99/month</button>
+        <p class="authalt"><a id="subSignOut">Sign out</a></p>
+        <p class="ob-status" id="subStatus"></p>
+      </div>
+    </div>
+    <div id="booksPanel" style="display:none;">
+      <div id="booksList" class="ob-results" style="margin-bottom:14px;"></div>
+    </div>
     <div class="entry">
       <input type="text" id="obNum" placeholder="Company name or number" autocomplete="off">
       <button class="btn gold" id="obGo">Create my statutory book</button>
@@ -281,6 +321,8 @@ body.mode-edit .view-only { display: none; }
     <button class="btn ghost-light" id="btnTheme">Theme from logo</button>
     <button class="btn ghost-light" id="btnResetTheme">Reset theme</button>
     <button class="btn ghost-light" id="btnNew">New company</button>
+    <button class="btn ghost-light" id="btnAccount" style="display:none">Billing</button>
+    <button class="btn ghost-light" id="btnSignOut" style="display:none">Sign out</button>
     <div class="savestate" id="saveState"></div>
     <input type="file" id="logoInput" accept="image/*" style="display:none">
     <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
@@ -509,6 +551,7 @@ function save() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(data)); setSaveState("Saved automatically"); }
   catch (e) { setSaveState(""); }
   renderStamp();
+  scheduleCloudSave();
 }
 function stampFormat(iso) {
   if (!iso) return "";
@@ -1337,8 +1380,10 @@ async function pullCompany(num, statusEl, onDone) {
   if (!num) { statusEl.textContent = "Please enter your company number."; return; }
   statusEl.innerHTML = '<span class="spinner"></span>Building your statutory book…';
   try {
-    const resp = await fetch(CONFIG.chEndpoint + "?number=" + encodeURIComponent(num), { headers: { "Accept": "application/json" } });
+    const resp = await fetch(CONFIG.chEndpoint + "?number=" + encodeURIComponent(num), { headers: authHeaders({ "Accept": "application/json" }) });
     if (!resp.ok) {
+      if (resp.status === 401) { statusEl.textContent = ""; setAccountState("auth"); return; }
+      if (resp.status === 402) { statusEl.textContent = ""; setAccountState("subscribe"); return; }
       if (resp.status === 404) statusEl.textContent = "We couldn't find a company with that number. Please check and try again.";
       else statusEl.textContent = "We couldn't reach the records service just now. Please try again in a moment.";
       return;
@@ -1399,7 +1444,7 @@ function searchCompanies(q) {
   const box = document.getElementById("obResults");
   q = (q || "").trim();
   if (q.length < 2 || looksLikeNumber(q)) { box.innerHTML = ""; return; }
-  fetch(CONFIG.searchEndpoint + "?q=" + encodeURIComponent(q), { headers: { "Accept": "application/json" } })
+  fetch(CONFIG.searchEndpoint + "?q=" + encodeURIComponent(q), { headers: authHeaders({ "Accept": "application/json" }) })
     .then(r => r.ok ? r.json() : { items: [] })
     .then(d => {
       const items = (d.items || []);
@@ -1432,15 +1477,18 @@ function init() {
 
   document.getElementById("obGo").onclick = () => {
     const v = document.getElementById("obNum").value;
-    if (_selected && (v === _selected.title || v === _selected.number)) {
+    const go = num => {
+      if (_account.state === "books" && _account.books.length >= 1 &&
+          !_account.books.some(b => b.company_number === String(num).toUpperCase())) {
+        if (!confirm("Adding another company increases your subscription by £14.99 a month (pro-rated by Stripe). Continue?")) return;
+      }
       document.getElementById("obResults").innerHTML = ""; // clear list so the status is visible by the box
-      pullCompany(_selected.number, document.getElementById("obStatus"), () => enterApp());
-    } else if (looksLikeNumber(v)) {
-      document.getElementById("obResults").innerHTML = "";
-      pullCompany(v, document.getElementById("obStatus"), () => enterApp());
-    } else {
-      searchCompanies(v);
-    }
+      _localOnly = false;
+      pullCompany(num, document.getElementById("obStatus"), () => { enterApp(); cloudCreateCurrent(); });
+    };
+    if (_selected && (v === _selected.title || v === _selected.number)) go(_selected.number);
+    else if (looksLikeNumber(v)) go(v);
+    else searchCompanies(v);
   };
   document.getElementById("obNum").addEventListener("input", e => {
     _selected = null;   // typing changes the query, so drop any prior selection
@@ -1449,7 +1497,7 @@ function init() {
     _searchTimer = setTimeout(() => searchCompanies(v), 300);
   });
   document.getElementById("obNum").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("obGo").click(); });
-  document.getElementById("obSample").onclick = () => { data = easonSample(); save(); enterApp(); };
+  document.getElementById("obSample").onclick = () => { _localOnly = true; data = easonSample(); save(); enterApp(); };
   document.getElementById("obOffline").onclick = openOffline;
 
   document.getElementById("btnDownload").onclick = exportRegister;
@@ -1479,9 +1527,255 @@ function init() {
   };
   document.getElementById("modalBack").onclick = e => { if (e.target.id === "modalBack") document.getElementById("modalBack").classList.remove("open"); };
 
-  if (hasData()) enterApp();
+  initAccount();
 }
 document.addEventListener("DOMContentLoaded", init);
+
+/* ============================================================
+   ACCOUNTS, SUBSCRIPTION AND CLOUD STORAGE
+   Sign in with Supabase; pay with Stripe; books stored per
+   account server-side. If the server has no Supabase config yet
+   (pre-launch), everything falls back to the old local behaviour.
+   ============================================================ */
+let _sb = null;              // supabase client
+let _token = "";             // current access token
+let _localOnly = false;      // sample/offline books never sync
+let _cloudTimer = null;
+const _account = { state: "loading", email: "", books: [] };
+
+function authHeaders(base) {
+  const h = Object.assign({}, base || {});
+  if (_token) h["Authorization"] = "Bearer " + _token;
+  return h;
+}
+
+function scheduleCloudSave() {
+  if (_localOnly || _account.state !== "books" || !_token) return;
+  if (!data || !data.company || !data.company.number) return;
+  clearTimeout(_cloudTimer);
+  _cloudTimer = setTimeout(async () => {
+    try {
+      await fetch("/api/registers", {
+        method: "PUT",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ number: data.company.number, name: data.company.name || "", data: data })
+      });
+    } catch (e) { /* local copy is always safe; cloud retries on next save */ }
+  }, 2500);
+}
+
+async function cloudCreateCurrent() {
+  if (_localOnly || !_token || !data.company.number) return;
+  try {
+    await fetch("/api/registers", {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ number: data.company.number, name: data.company.name || "", data: data })
+    });
+    loadBooks(); // refresh the list quietly
+  } catch (e) { /* non-fatal */ }
+}
+
+function setAccountState(state) {
+  _account.state = state;
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; };
+  const entry = document.querySelector("#onboard .entry");
+  const tiny = document.querySelector("#onboard .tiny");
+  show("authPanel", state === "auth");
+  show("recoverPanel", state === "recover");
+  show("subPanel", state === "subscribe");
+  show("booksPanel", state === "books");
+  if (entry) entry.style.display = (state === "books" || state === "legacy") ? "" : "none";
+  if (tiny) tiny.style.display = (state === "books" || state === "legacy") ? "" : "none";
+  show("obResults", state === "books" || state === "legacy");
+  show("obStatus", state === "books" || state === "legacy");
+  const authed = (state === "books" || state === "subscribe");
+  show("btnAccount", authed);
+  show("btnSignOut", authed);
+}
+
+async function me() {
+  try {
+    const r = await fetch("/api/me", { headers: authHeaders({ "Accept": "application/json" }) });
+    if (!r.ok) return { status: r.status === 401 ? "signedout" : "error" };
+    return await r.json();
+  } catch (e) { return { status: "error" }; }
+}
+
+async function loadBooks() {
+  try {
+    const r = await fetch("/api/registers", { headers: authHeaders({ "Accept": "application/json" }) });
+    const j = r.ok ? await r.json() : { items: [] };
+    _account.books = j.items || [];
+  } catch (e) { _account.books = []; }
+  const box = document.getElementById("booksList");
+  if (!box) return;
+  let h = "";
+  if (_account.books.length) {
+    h += '<p class="bookshead">Your statutory books</p>';
+    h += _account.books.map(b =>
+      '<div class="bookrow"><div class="res" data-open="' + esc(b.company_number) + '">' +
+        '<div class="rt">' + esc(b.company_name || b.company_number) + '</div>' +
+        '<div class="rm">' + esc(b.company_number) + ' · updated ' + esc((b.updated_at || "").slice(0, 10)) + '</div>' +
+      '</div><button class="del" data-del-book="' + esc(b.company_number) + '" title="Remove this company">Remove</button></div>'
+    ).join("");
+  }
+  // Offer to bring in a book saved in this browser before accounts existed.
+  try {
+    const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    const num = local && local.company && local.company.number;
+    if (num && !_account.books.some(b => b.company_number === String(num).toUpperCase())) {
+      h += '<div class="res" id="importLocal"><div class="rt">Import ' + esc(local.company.name || num) + '</div>' +
+           '<div class="rm">Found in this browser — add it to your account</div></div>';
+    }
+  } catch (e) { /* ignore */ }
+  box.innerHTML = h;
+  box.querySelectorAll("[data-open]").forEach(el => el.onclick = () => openBook(el.dataset.open));
+  box.querySelectorAll("[data-del-book]").forEach(el => el.onclick = () => deleteBook(el.dataset.delBook));
+  const imp = document.getElementById("importLocal");
+  if (imp) imp.onclick = async () => {
+    try {
+      const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+      if (!local) return;
+      await fetch("/api/registers", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ number: local.company.number, name: local.company.name || "", data: local }) });
+      loadBooks();
+    } catch (e) { /* ignore */ }
+  };
+}
+
+async function openBook(number) {
+  try {
+    const r = await fetch("/api/registers?number=" + encodeURIComponent(number), { headers: authHeaders({ "Accept": "application/json" }) });
+    if (!r.ok) return;
+    const row = await r.json();
+    if (!row || !row.data) return;
+    _localOnly = false;
+    data = row.data;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {}
+    enterApp();
+  } catch (e) { /* ignore */ }
+}
+
+async function deleteBook(number) {
+  if (!confirm("Remove this company from your account? Your subscription reduces accordingly. Any downloaded copies stay yours.")) return;
+  try {
+    await fetch("/api/registers", { method: "DELETE", headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ number: number }) });
+  } catch (e) { /* ignore */ }
+  loadBooks();
+}
+
+async function refreshAccount() {
+  const info = await me();
+  if (info.status === "legacy") { setAccountState("legacy"); if (hasData()) enterApp(); return; }
+  if (info.status === "signedout" || info.status === "error") { setAccountState("auth"); return; }
+  _account.email = info.email || "";
+  if (info.status === "active" || info.status === "trialing") {
+    setAccountState("books");
+    loadBooks();
+  } else {
+    setAccountState("subscribe");
+  }
+}
+
+async function initAccount() {
+  let cfg = { supabaseUrl: "", supabaseAnonKey: "" };
+  try { cfg = await (await fetch("/api/config")).json(); } catch (e) { /* fall through */ }
+  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) {
+    setAccountState("legacy");
+    if (hasData()) enterApp();
+    return;
+  }
+  _sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  _sb.auth.onAuthStateChange((event, session) => {
+    _token = (session && session.access_token) || "";
+    if (event === "PASSWORD_RECOVERY") { setAccountState("recover"); return; }
+    if (event === "SIGNED_OUT") { _account.books = []; document.body.classList.remove("ready"); setAccountState("auth"); return; }
+  });
+  const { data: s } = await _sb.auth.getSession();
+  _token = (s && s.session && s.session.access_token) || "";
+
+  // Back from Stripe? Poll until the webhook lands, then carry on.
+  if (new URL(location.href).searchParams.get("checkout") === "success") {
+    history.replaceState(null, "", location.pathname);
+    setAccountState("subscribe");
+    const st = document.getElementById("subStatus");
+    if (st) st.innerHTML = '<span class="spinner"></span>Confirming your subscription…';
+    for (let i = 0; i < 15; i++) {
+      const info = await me();
+      if (info.status === "active" || info.status === "trialing") break;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  await refreshAccount();
+
+  // Panel wiring
+  let signUpMode = false;
+  const authStatus = document.getElementById("authStatus");
+  document.getElementById("authToggle").onclick = () => {
+    signUpMode = !signUpMode;
+    document.getElementById("authGo").textContent = signUpMode ? "Create account" : "Sign in";
+    document.getElementById("authToggle").textContent = signUpMode ? "Already registered? Sign in" : "New here? Create an account";
+    authStatus.textContent = "";
+  };
+  document.getElementById("authGo").onclick = async () => {
+    const email = document.getElementById("authEmail").value.trim();
+    const pass = document.getElementById("authPass").value;
+    if (!email || !pass) { authStatus.textContent = "Enter your email and a password."; return; }
+    authStatus.innerHTML = '<span class="spinner"></span>One moment…';
+    try {
+      if (signUpMode) {
+        const { data: d, error } = await _sb.auth.signUp({ email: email, password: pass });
+        if (error) { authStatus.textContent = error.message; return; }
+        if (d && d.session) { _token = d.session.access_token; await refreshAccount(); }
+        else authStatus.textContent = "Nearly there — click the confirmation link we've emailed you, then sign in.";
+      } else {
+        const { data: d, error } = await _sb.auth.signInWithPassword({ email: email, password: pass });
+        if (error) { authStatus.textContent = "That didn't work — check the details and try again."; return; }
+        _token = (d && d.session && d.session.access_token) || "";
+        await refreshAccount();
+      }
+    } catch (e) { authStatus.textContent = "Something went wrong — try again."; }
+  };
+  document.getElementById("authForgot").onclick = async () => {
+    const email = document.getElementById("authEmail").value.trim();
+    if (!email) { authStatus.textContent = "Type your email first, then press Forgotten password."; return; }
+    try {
+      await _sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/" });
+      authStatus.textContent = "If that address has an account, a reset link is on its way.";
+    } catch (e) { authStatus.textContent = "Could not send the reset email just now."; }
+  };
+  document.getElementById("recoverGo").onclick = async () => {
+    const pass = document.getElementById("recoverPass").value;
+    const rs = document.getElementById("recoverStatus");
+    if (pass.length < 8) { rs.textContent = "Use at least 8 characters."; return; }
+    const { error } = await _sb.auth.updateUser({ password: pass });
+    if (error) { rs.textContent = error.message; return; }
+    await refreshAccount();
+  };
+  document.getElementById("subGo").onclick = async () => {
+    const st = document.getElementById("subStatus");
+    st.innerHTML = '<span class="spinner"></span>Taking you to the secure payment page…';
+    try {
+      const r = await fetch("/api/create-checkout-session", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }) });
+      const j = await r.json();
+      if (j.already) { await refreshAccount(); return; }
+      if (j.url) { location.href = j.url; return; }
+      st.textContent = j.error || "Could not start the payment page.";
+    } catch (e) { st.textContent = "Could not start the payment page."; }
+  };
+  document.getElementById("subSignOut").onclick = () => _sb.auth.signOut();
+  document.getElementById("btnSignOut").onclick = () => _sb.auth.signOut();
+  document.getElementById("btnAccount").onclick = async () => {
+    try {
+      const r = await fetch("/api/portal", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }) });
+      const j = await r.json();
+      if (j.url) location.href = j.url;
+      else alert(j.error || "Could not open billing.");
+    } catch (e) { alert("Could not open billing."); }
+  };
+}
 </script>
 </body>
 </html>

@@ -563,6 +563,14 @@ module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store"); // always live: stale cached pulls caused false "not working" results
 
+  // Paid gate: pulls and updates are the service the subscription buys.
+  const { requireSubscriber } = require("./_auth.js");
+  const gate = await requireSubscriber(req);
+  if (!gate.ok) {
+    res.statusCode = gate.code;
+    return res.end(JSON.stringify({ error: gate.msg, gate: gate.code === 402 ? "subscribe" : "signin" }));
+  }
+
   const key = process.env.CH_API_KEY;
   if (!key) {
     res.statusCode = 500;
