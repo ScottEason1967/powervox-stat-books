@@ -77,6 +77,13 @@ module.exports = async function handler(req, res) {
     if (isNew) {
       const { count } = await admin().from("registers")
         .select("company_number", { count: "exact", head: true }).eq("user_id", g.user.id);
+      // One subscription, one company. MAX_COMPANIES exists for a future
+      // multi-company tier but the product model is strictly one by default.
+      const cap = Math.max(1, parseInt(process.env.MAX_COMPANIES || "1", 10) || 1);
+      if ((count || 0) >= cap) {
+        res.statusCode = 403;
+        return res.end(JSON.stringify({ error: "Your subscription covers one company. Remove your existing company first, or get in touch about looking after more than one." }));
+      }
       const { error } = await admin().from("registers").upsert(row, { onConflict: "user_id,company_number" });
       if (error) { res.statusCode = 500; return res.end(JSON.stringify({ error: "Could not save the register." })); }
       // Additional companies raise the subscription quantity (pro-rated by Stripe).
