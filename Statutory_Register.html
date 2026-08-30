@@ -51,7 +51,7 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 /* ============================================================
    ONBOARDING (first screen)
    ============================================================ */
-#onboard { min-height: 100vh; display: flex; align-items: center; justify-content: center;
+#onboard { position: relative; padding-top: 76px; box-sizing: border-box; min-height: 100vh; display: flex; align-items: center; justify-content: center;
   background:
     radial-gradient(1200px 600px at 50% -10%, #34704A 0%, var(--forest) 45%, var(--forest-deep) 100%);
   padding: 40px 20px; }
@@ -68,6 +68,8 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 #onboard .bookrow .del { flex: none; background: transparent; border: 1px solid rgba(255,255,255,.4); color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 6px 9px; }
 #onboard .bookrow .del:hover { background: rgba(255,255,255,.15); }
 #onboard .bookshead { font-family: var(--sans); text-transform: uppercase; letter-spacing: .22em; font-size: 10.5px; font-weight: 600; color: var(--gold); margin: 0 0 8px; text-align: left; }
+#obAcct { align-items: center; gap: 10px; margin-left: auto; }
+#obEmail { font-size: 12px; color: rgba(255,255,255,.75); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #onboard .obfoot { margin: 18px 0 0; font-size: 11.5px; color: rgba(255,255,255,.45); }
 #onboard .obfoot + .obfoot { margin-top: 8px; }
 #onboard .obfoot span { margin: 0 10px; color: rgba(255,255,255,.3); }
@@ -267,6 +269,14 @@ body.mode-edit .view-only { display: none; }
 
 <!-- ============================ ONBOARDING ============================ -->
 <div id="onboard">
+  <div class="appbar" id="obBar" style="position:absolute; top:0; left:0; right:0;">
+    <div class="brandmark" id="obBarBrand"></div>
+    <div id="obAcct" style="display:none;">
+      <span id="obEmail"></span>
+      <button class="btn ghost-light" id="obBilling">Billing</button>
+      <button class="btn ghost-light" id="obSignOut">Sign out</button>
+    </div>
+  </div>
   <div class="card">
     <div class="ob-brand" id="obBrand"></div>
     <h1>Your statutory books,<br>in good order.</h1>
@@ -311,11 +321,8 @@ body.mode-edit .view-only { display: none; }
     <div id="obResults" class="ob-results"></div>
     <div class="gold-rule"></div>
     <p class="tiny"><a id="obSample">See an example</a> &nbsp;·&nbsp; <a id="obOffline">Having trouble?</a></p>
-    <p class="obfoot" id="obNav" style="display:none;">
-      <a id="navBilling">Billing</a><span>·</span><a href="https://easonlaw.co.uk" target="_blank" rel="noopener">Eason Law</a><span>·</span><a id="navSignOut">Sign out</a>
-    </p>
     <p class="obfoot">
-      <a href="/terms.html">Terms &amp; Conditions</a><span>·</span><a href="/privacy.html">Privacy Policy</a>
+      <a href="https://easonlaw.co.uk" target="_blank" rel="noopener">Eason Law</a><span>·</span><a href="/terms.html">Terms &amp; Conditions</a><span>·</span><a href="/privacy.html">Privacy Policy</a>
     </p>
   </div>
 </div>
@@ -1521,9 +1528,11 @@ function init() {
   document.getElementById("btnDownload").onclick = exportRegister;
   document.getElementById("btnPrint").onclick = () => window.print();
   document.getElementById("btnEdit").onclick = toggleEdit;
-  // Nav bar: small logo on a white chip so the crimson mark doesn't sink into the red bar.
-  document.getElementById("appBrand").innerHTML =
-    '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
+  // Nav bars: small logo on a white chip so the crimson mark doesn't sink into the red.
+  const chip = '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
+  document.getElementById("appBrand").innerHTML = chip;
+  const obb = document.getElementById("obBarBrand");
+  if (obb) obb.innerHTML = chip;
   // Onboarding hero: the real logo on the same white chip, replacing the text eyebrow.
   const ob = document.getElementById("obBrand");
   if (ob) ob.innerHTML = '<img src="' + EL_LOGO + '" alt="Eason Law">';
@@ -1623,7 +1632,10 @@ function setAccountState(state) {
   const authed = (state === "books" || state === "subscribe");
   show("btnAccount", authed);
   show("btnSignOut", authed);
-  show("obNav", state === "books");
+  const acct = document.getElementById("obAcct");
+  if (acct) acct.style.display = authed ? "flex" : "none";
+  const em = document.getElementById("obEmail");
+  if (em) em.textContent = authed ? (_account.email || "") : "";
 }
 
 async function me() {
@@ -1694,6 +1706,14 @@ async function deleteBook(number) {
   try {
     await fetch("/api/registers", { method: "DELETE", headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ number: number }) });
+  } catch (e) { /* ignore */ }
+  // Wipe the browser's local working copy of the same company, so a removed
+  // book doesn't linger on the machine or resurface as an import offer.
+  try {
+    const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    if (local && local.company && String(local.company.number).toUpperCase() === String(number).toUpperCase()) {
+      localStorage.removeItem(LS_KEY);
+    }
   } catch (e) { /* ignore */ }
   loadBooks();
 }
@@ -1797,11 +1817,16 @@ async function initAccount() {
       st.textContent = j.error || "Could not start the payment page.";
     } catch (e) { st.textContent = "Could not start the payment page."; }
   };
-  document.getElementById("subSignOut").onclick = () => _sb.auth.signOut();
-  document.getElementById("btnSignOut").onclick = () => _sb.auth.signOut();
-  document.getElementById("navSignOut").onclick = () => _sb.auth.signOut();
+  const doSignOut = () => {
+    // Clear the local working copy so nothing readable stays on a shared machine.
+    try { localStorage.removeItem(LS_KEY); } catch (e) {}
+    _sb.auth.signOut();
+  };
+  document.getElementById("subSignOut").onclick = doSignOut;
+  document.getElementById("btnSignOut").onclick = doSignOut;
+  document.getElementById("obSignOut").onclick = doSignOut;
   document.getElementById("btnAccount").onclick = openPortal;
-  document.getElementById("navBilling").onclick = openPortal;
+  document.getElementById("obBilling").onclick = openPortal;
 }
 </script>
 </body>
