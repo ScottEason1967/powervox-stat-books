@@ -51,11 +51,11 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 /* ============================================================
    ONBOARDING (first screen)
    ============================================================ */
-#onboard { position: relative; padding-top: 76px; box-sizing: border-box; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+#onboard { position: relative; padding: 96px 20px 48px; box-sizing: border-box; min-height: 100vh; display: flex;
   background:
     radial-gradient(1200px 600px at 50% -10%, #34704A 0%, var(--forest) 45%, var(--forest-deep) 100%);
   padding: 40px 20px; }
-#onboard .card { width: 100%; max-width: 560px; text-align: center; color: #fff; }
+#onboard .card { width: 100%; max-width: 560px; text-align: center; color: #fff; margin: auto; }
 #onboard .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .34em; font-size: 12px; font-weight: 600; color: var(--gold); margin: 0 0 18px; }
 #onboard .ob-brand { display: inline-block; background: #fff; border-radius: 12px; padding: 12px 22px; margin: 0 0 22px; box-shadow: 0 1px 8px rgba(0,0,0,.15); }
 #onboard .ob-brand img { height: 46px; display: block; }
@@ -269,7 +269,7 @@ body.mode-edit .view-only { display: none; }
 
 <!-- ============================ ONBOARDING ============================ -->
 <div id="onboard">
-  <div class="appbar" id="obBar" style="position:absolute; top:0; left:0; right:0;">
+  <div class="appbar" id="obBar" style="position:fixed; top:0; left:0; right:0; z-index:60;">
     <div class="brandmark" id="obBarBrand"></div>
     <div id="obAcct" style="display:none;">
       <span id="obEmail"></span>
@@ -1664,13 +1664,17 @@ async function loadBooks() {
       '</div><button class="del" data-del-book="' + esc(b.company_number) + '" title="Remove this company">Remove</button></div>'
     ).join("");
   }
-  // Offer to bring in a book saved in this browser before accounts existed.
+  // Offer to bring in a book saved in this browser before accounts existed —
+  // but never one the user has removed from the account, and always dismissable.
   try {
     const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
     const num = local && local.company && local.company.number;
-    if (num && !_account.books.some(b => b.company_number === String(num).toUpperCase())) {
-      h += '<div class="res" id="importLocal"><div class="rt">Import ' + esc(local.company.name || num) + '</div>' +
-           '<div class="rm">Found in this browser — add it to your account</div></div>';
+    const removed = JSON.parse(localStorage.getItem(LS_KEY + "_removed") || "[]");
+    if (num && !_account.books.some(b => b.company_number === String(num).toUpperCase()) &&
+        removed.indexOf(String(num).toUpperCase()) < 0) {
+      h += '<div class="bookrow"><div class="res" id="importLocal"><div class="rt">Import ' + esc(local.company.name || num) + '</div>' +
+           '<div class="rm">Found in this browser — add it to your account</div></div>' +
+           '<button class="del" id="importDismiss" title="Delete this copy from the browser">Dismiss</button></div>';
     }
   } catch (e) { /* ignore */ }
   box.innerHTML = h;
@@ -1681,10 +1685,16 @@ async function loadBooks() {
     try {
       const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
       if (!local) return;
-      await fetch("/api/registers", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+      const r = await fetch("/api/registers", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ number: local.company.number, name: local.company.name || "", data: local }) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); if (j.error) alert(j.error); }
       loadBooks();
     } catch (e) { /* ignore */ }
+  };
+  const dis = document.getElementById("importDismiss");
+  if (dis) dis.onclick = () => {
+    try { localStorage.removeItem(LS_KEY); } catch (e) {}
+    loadBooks();
   };
 }
 
@@ -1707,13 +1717,16 @@ async function deleteBook(number) {
     await fetch("/api/registers", { method: "DELETE", headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ number: number }) });
   } catch (e) { /* ignore */ }
-  // Wipe the browser's local working copy of the same company, so a removed
-  // book doesn't linger on the machine or resurface as an import offer.
+  // Wipe the browser's local working copy of the same company, and remember the
+  // removal permanently so no stale copy ever resurfaces as an import offer.
   try {
     const local = JSON.parse(localStorage.getItem(LS_KEY) || "null");
     if (local && local.company && String(local.company.number).toUpperCase() === String(number).toUpperCase()) {
       localStorage.removeItem(LS_KEY);
     }
+    const removed = JSON.parse(localStorage.getItem(LS_KEY + "_removed") || "[]");
+    if (removed.indexOf(String(number).toUpperCase()) < 0) removed.push(String(number).toUpperCase());
+    localStorage.setItem(LS_KEY + "_removed", JSON.stringify(removed));
   } catch (e) { /* ignore */ }
   loadBooks();
 }
