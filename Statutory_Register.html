@@ -68,6 +68,11 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 #onboard .bookrow .del { flex: none; background: transparent; border: 1px solid rgba(255,255,255,.4); color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 6px 9px; }
 #onboard .bookrow .del:hover { background: rgba(255,255,255,.15); }
 #onboard .bookshead { font-family: var(--sans); text-transform: uppercase; letter-spacing: .22em; font-size: 10.5px; font-weight: 600; color: var(--gold); margin: 0 0 8px; text-align: left; }
+#onboard .obfoot { margin: 18px 0 0; font-size: 11.5px; color: rgba(255,255,255,.45); }
+#onboard .obfoot + .obfoot { margin-top: 8px; }
+#onboard .obfoot span { margin: 0 10px; color: rgba(255,255,255,.3); }
+#onboard .obfoot a { color: rgba(255,255,255,.65); text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.2); cursor: pointer; transition: color .15s, border-color .15s; }
+#onboard .obfoot a:hover { color: #fff; border-color: var(--gold); }
 #onboard h1 { font-family: var(--serif); font-weight: 600; font-size: 40px; line-height: 1.15; margin: 0 0 14px; color: #fff; }
 #onboard .lede { font-family: var(--serif); font-style: italic; font-size: 19px; color: var(--gold); margin: 0 0 22px; }
 #onboard p.help { font-size: 14.5px; color: rgba(255,255,255,.82); margin: 0 auto 26px; max-width: 460px; }
@@ -298,14 +303,6 @@ body.mode-edit .view-only { display: none; }
     <div id="booksPanel" style="display:none;">
       <div id="booksList" class="ob-results" style="margin-bottom:14px;"></div>
     </div>
-    <p class="authalt" id="obNav" style="display:none; margin-top:20px;">
-      <a id="navBilling">Billing</a> &nbsp;·&nbsp;
-      <a href="https://easonlaw.co.uk" target="_blank" rel="noopener">Eason Law</a> &nbsp;·&nbsp;
-      <a id="navSignOut">Sign out</a>
-    </p>
-    <p class="authalt" style="margin-top:14px; opacity:.75;">
-      <a href="/terms.html">Terms &amp; Conditions</a> &nbsp;·&nbsp; <a href="/privacy.html">Privacy Policy</a>
-    </p>
     <div class="entry">
       <input type="text" id="obNum" placeholder="Company name or number" autocomplete="off">
       <button class="btn gold" id="obGo">Create my statutory book</button>
@@ -314,6 +311,12 @@ body.mode-edit .view-only { display: none; }
     <div id="obResults" class="ob-results"></div>
     <div class="gold-rule"></div>
     <p class="tiny"><a id="obSample">See an example</a> &nbsp;·&nbsp; <a id="obOffline">Having trouble?</a></p>
+    <p class="obfoot" id="obNav" style="display:none;">
+      <a id="navBilling">Billing</a><span>·</span><a href="https://easonlaw.co.uk" target="_blank" rel="noopener">Eason Law</a><span>·</span><a id="navSignOut">Sign out</a>
+    </p>
+    <p class="obfoot">
+      <a href="/terms.html">Terms &amp; Conditions</a><span>·</span><a href="/privacy.html">Privacy Policy</a>
+    </p>
   </div>
 </div>
 
