@@ -313,14 +313,15 @@ body.mode-edit .view-only { display: none; }
     <div id="booksPanel" style="display:none;">
       <div id="booksList" class="ob-results" style="margin-bottom:14px;"></div>
     </div>
-    <div class="entry">
+    <p class="ob-status" id="obLoading" style="background:none; border:none;"><span class="spinner"></span></p>
+    <div class="entry" style="display:none;">
       <input type="text" id="obNum" placeholder="Company name or number" autocomplete="off">
       <button class="btn gold" id="obGo">Create my statutory book</button>
     </div>
     <p class="ob-status" id="obStatus"></p>
     <div id="obResults" class="ob-results"></div>
     <div class="gold-rule"></div>
-    <p class="tiny"><a id="obSample">See an example</a> &nbsp;·&nbsp; <a id="obOffline">Having trouble?</a></p>
+    <p class="tiny" style="display:none;"><a id="obSample">See an example</a> &nbsp;·&nbsp; <a id="obOffline">Having trouble?</a></p>
     <p class="obfoot">
       <a href="https://easonlaw.co.uk" target="_blank" rel="noopener">Eason Law</a><span>·</span><a href="/terms.html">Terms &amp; Conditions</a><span>·</span><a href="/privacy.html">Privacy Policy</a>
     </p>
@@ -1619,6 +1620,7 @@ function openPortal() {
 function setAccountState(state) {
   _account.state = state;
   const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; };
+  show("obLoading", false); // any decided state replaces the boot spinner
   const entry = document.querySelector("#onboard .entry");
   const tiny = document.querySelector("#onboard .tiny");
   show("authPanel", state === "auth");
