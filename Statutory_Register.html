@@ -340,7 +340,6 @@ body.mode-edit .view-only { display: none; }
     <button class="btn ghost-light" id="btnRemoveLogo" style="display:none">Remove logo</button>
     <button class="btn ghost-light" id="btnTheme">Theme from logo</button>
     <button class="btn ghost-light" id="btnResetTheme">Reset theme</button>
-    <button class="btn ghost-light" id="btnNew">New company</button>
     <button class="btn ghost-light" id="btnAccount" style="display:none">Billing</button>
     <button class="btn ghost-light" id="btnSignOut" style="display:none">Sign out</button>
     <div class="savestate" id="saveState"></div>
@@ -766,8 +765,10 @@ function renderMasthead() {
   if (c.incorporated) sub.push("Incorporated in " + (c.jurisdiction || "England and Wales") + " on " + c.incorporated);
   document.getElementById("mhSub").textContent = sub.join("  ·  ");
   const lw = document.getElementById("mastheadLogo");
+  // The masthead belongs to the customer's company, not to us — the Eason Law
+  // mark lives in the nav bar only. No logo uploaded means no logo shown.
   if (CONFIG.logoUrl) lw.innerHTML = '<img class="logo" src="' + esc(CONFIG.logoUrl) + '" alt="' + esc(c.name || CONFIG.brandName) + '">';
-  else lw.innerHTML = '<img class="logo" src="' + EL_LOGO + '" alt="Eason Law" style="max-height:64px;">';
+  else lw.innerHTML = "";
   const rb = document.getElementById("btnRemoveLogo");
   if (rb) rb.style.display = CONFIG.logoUrl ? "" : "none";
 }
@@ -1101,6 +1102,67 @@ function exportRegister() {
   const appEl = clone.querySelector("#app"); if (appEl) appEl.style.display = "block";
   const html = "<!DOCTYPE html>\n" + clone.outerHTML;
   downloadFile(html, (data.company.name || "statutory-register").replace(/[^a-z0-9]+/gi, "_") + "_Statutory_Register.html", "text/html");
+}
+// Data export: the registers as an Excel workbook, one sheet per register.
+// The presentable book lives inside the subscription (and prints); the export
+// carries the data.
+function exportExcel() {
+  const go = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+      const c = data.company || {};
+      const compRows = [["Field", "Value"]];
+      [["Company name", c.name], ["Company number", c.number], ["Type", c.type],
+       ["Incorporated", c.incorporated], ["Jurisdiction", c.jurisdiction],
+       ["Registered office", c.registeredOffice], ["Status", c.status],
+       ["Dissolved on", c.dissolvedOn], ["Articles", c.articles]
+      ].forEach(r => { if (r[1]) compRows.push(r); });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(compRows), "Company");
+
+      const dir = [["Name", "Service address", "Appointed", "Status"]];
+      ((data.directors && data.directors.current) || []).forEach(d => { if (d.name) dir.push([d.name, d.serviceAddress, d.appointed, d.status]); });
+      dir.push([]); dir.push(["Officer history"]); dir.push(["Officer", "Event", "Date", "Filed"]);
+      ((data.directors && data.directors.history) || []).forEach(cd => (cd.rows || []).forEach(r => { if (r.event || r.date) dir.push([cd.name, r.event, r.date, r.filed]); }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dir), "Directors");
+
+      const mem = [["Member", "Address", "Class", "Shares held", "Nominal value", "Paid up"]];
+      ((data.members && data.members.current) || []).forEach(m => { if (m.member) mem.push([m.member, m.address, m.cls, m.shares, m.nominal, m.paidUp]); });
+      if (data.members && data.members.asAtNote) { mem.push([]); mem.push([data.members.asAtNote]); }
+      if (data.members && data.members.publicCapital && data.members.publicCapital.total != null) {
+        mem.push(["Companies House shows " + data.members.publicCapital.total + " share(s) in issue" + (data.members.publicCapital.asAt ? " as at " + data.members.publicCapital.asAt : "")]);
+      }
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mem), "Members");
+
+      const al = [["Date", "Type", "Details", "CH filing"]];
+      ((data.allotments && data.allotments.rows) || []).forEach(r => { if (r.details || r.date) al.push([r.date, r.type, r.details, r.filing]); });
+      al.push([]); al.push(["Share class rights"]); al.push(["Class", "Voting", "Dividend", "Capital"]);
+      ((data.allotments && data.allotments.classRights) || []).forEach(r => { if (r.cls) al.push([r.cls, r.voting, r.dividend, r.capital]); });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(al), "Allotments & Transfers");
+
+      const psc = [["Name", "Nature of control", "From", "Status"]];
+      ((data.psc && data.psc.current) || []).forEach(p => { if (p.name) psc.push([p.name, p.nature, p.from, p.status]); });
+      psc.push([]); psc.push(["PSC history"]); psc.push(["Date", "Person", "Action", "Filed"]);
+      ((data.psc && data.psc.history) || []).forEach(r => { if (r.person) psc.push([r.date, r.person, r.action, r.filed]); });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(psc), "PSC");
+
+      const cert = [["Cert No.", "Holder", "Class", "Shares", "Issued", "Status"]];
+      ((data.certificates && data.certificates.rows) || []).forEach(r => { if (r.holder || r.certNo) cert.push([r.certNo, r.holder, r.cls, r.shares, r.issued, r.status]); });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cert), "Share Certificates");
+
+      const fil = [["Form", "Event", "Effective date", "Deadline", "Status"]];
+      ((data.filings && data.filings.rows) || []).forEach(r => { if (r.form || r.event) fil.push([r.form, r.event, r.effective, r.deadline, r.status]); });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(fil), "Filings Outstanding");
+
+      XLSX.writeFile(wb, (data.company.name || "statutory-registers").replace(/[^a-z0-9]+/gi, "_") + "_Statutory_Registers.xlsx");
+    } catch (e) { alert("The export could not be created just now."); }
+  };
+  if (window.XLSX) return go();
+  setSaveState("Preparing export…");
+  const sc = document.createElement("script");
+  sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  sc.onload = () => { setSaveState(""); go(); };
+  sc.onerror = () => { setSaveState(""); alert("The export could not be created just now — check your connection and try again."); };
+  document.head.appendChild(sc);
 }
 function downloadFile(content, filename, mime) {
   const blob = new Blob([content], { type: mime });
@@ -1526,7 +1588,7 @@ function init() {
   document.getElementById("obSample").onclick = () => { _localOnly = true; data = easonSample(); save(); enterApp(); };
   document.getElementById("obOffline").onclick = openOffline;
 
-  document.getElementById("btnDownload").onclick = exportRegister;
+  document.getElementById("btnDownload").onclick = exportExcel;
   document.getElementById("btnPrint").onclick = () => window.print();
   document.getElementById("btnEdit").onclick = toggleEdit;
   // Nav bars: small logo on a white chip so the crimson mark doesn't sink into the red.
@@ -1547,11 +1609,19 @@ function init() {
   };
   document.getElementById("btnTheme").onclick = themeFromLogo;
   document.getElementById("btnResetTheme").onclick = resetTheme;
-  document.getElementById("btnNew").onclick = () => { if (confirm("Start a new company? Your current book stays saved in this browser until you replace it.")) { data = blankTemplate(); save(); document.body.classList.remove("ready"); document.getElementById("obNum").value = ""; document.getElementById("obStatus").textContent = ""; } };
+  // The logo chips lead home: back to the account screen with your books.
+  window.goHome = () => {
+    document.body.classList.remove("ready");
+    document.getElementById("obNum").value = "";
+    document.getElementById("obStatus").textContent = "";
+    if (_account.state === "books") loadBooks();
+  };
+  document.getElementById("appBrand").style.cursor = "pointer";
+  document.getElementById("appBrand").onclick = goHome;
   document.getElementById("btnUpdate").onclick = () => {
     if (!data.company.number) { alert("Add your company number under Edit details first."); return; }
     setSaveState("Checking Companies House…");
-    pullCompany(data.company.number, { set textContent(v){ setSaveState(v); }, set innerHTML(v){ setSaveState("Checking Companies House…"); } }, (summary) => { showBook(); setSaveState("Updated " + new Date().toLocaleTimeString()); alert("Updated from Companies House. " + summary); });
+    pullCompany(data.company.number, { set textContent(v){ setSaveState(v); }, set innerHTML(v){ setSaveState("Checking Companies House…"); } }, (summary) => { showBook(); setSaveState(""); alert("Updated from Companies House. " + summary); });
   };
   document.getElementById("modalBack").onclick = e => { if (e.target.id === "modalBack") document.getElementById("modalBack").classList.remove("open"); };
 
@@ -1747,6 +1817,12 @@ async function refreshAccount() {
 }
 
 async function initAccount() {
+  // Partner attribution: arriving via a partner link (e.g. /?via=tlc) tags any
+  // later subscription with that partner in Stripe.
+  try {
+    const via = new URL(location.href).searchParams.get("via");
+    if (via) localStorage.setItem(LS_KEY + "_via", via.replace(/[^a-z0-9_-]/gi, "").slice(0, 20));
+  } catch (e) { /* ignore */ }
   let cfg = { supabaseUrl: "", supabaseAnonKey: "" };
   try { cfg = await (await fetch("/api/config")).json(); } catch (e) { /* fall through */ }
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) {
@@ -1825,7 +1901,8 @@ async function initAccount() {
     const st = document.getElementById("subStatus");
     st.innerHTML = '<span class="spinner"></span>Taking you to the secure payment page…';
     try {
-      const r = await fetch("/api/create-checkout-session", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }) });
+      const r = await fetch("/api/create-checkout-session", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ partner: localStorage.getItem(LS_KEY + "_via") || "" }) });
       const j = await r.json();
       if (j.already) { await refreshAccount(); return; }
       if (j.url) { location.href = j.url; return; }

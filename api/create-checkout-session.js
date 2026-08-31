@@ -23,6 +23,14 @@ module.exports = async function handler(req, res) {
       return res.end(JSON.stringify({ already: true }));
     }
 
+    // Partner attribution (e.g. "tlc") — surfaces on the subscription in Stripe
+    // so partner-introduced customers can be counted.
+    let partner = "";
+    try {
+      const body = (req.body && typeof req.body === "object") ? req.body : (() => { try { return JSON.parse(req.body || "{}"); } catch (e) { return {}; } })();
+      partner = String(body.partner || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 20);
+    } catch (e) { /* ignore */ }
+
     const params = {
       mode: "subscription",
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
@@ -30,7 +38,7 @@ module.exports = async function handler(req, res) {
       success_url: appUrl + "/?checkout=success",
       cancel_url: appUrl + "/?checkout=cancelled",
       allow_promotion_codes: true,
-      subscription_data: { metadata: { supabase_user_id: u.user.id } }
+      subscription_data: { metadata: { supabase_user_id: u.user.id, partner: partner } }
     };
     if (existing && existing.stripe_customer_id) params.customer = existing.stripe_customer_id;
     else params.customer_email = u.user.email;
