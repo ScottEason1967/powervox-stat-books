@@ -6,7 +6,7 @@
 <title>Eason Law — Statutory Registers</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 /* ============================================================
@@ -16,20 +16,23 @@
     display to match the logo letterforms)
    ============================================================ */
 :root {
-  --forest: #A50D3F;         /* Eason crimson — primary ground and headings */
-  --forest-deep: #7C0A30;    /* deep crimson */
-  --gold: #AC8B57;           /* Eason gold */
-  --gold-deep: #96784A;
-  --mulberry: #2D2926;       /* charcoal — secondary button */
-  --ink: #2D2926;            /* near-black body text */
-  --muted: #5C5754;          /* mid grey */
-  --cream: #F7F5F3;          /* warm light surround / nav */
-  --sage: #EDE9E4;
-  --sage-soft: #F3F0EC;
-  --stone: #B5ADA5;
-  --line: #D4CFC9;
-  --serif: 'EB Garamond', Garamond, Georgia, 'Times New Roman', serif;
-  --sans: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+  --forest: #B21243;         /* Eason crimson — primary (2026 refresh) */
+  --forest-deep: #8E0E37;    /* deep crimson */
+  --gold: #B08D4F;           /* Eason gold */
+  --gold-deep: #8f713f;
+  --mulberry: #221E1C;       /* charcoal — secondary button */
+  --ink: #221E1C;            /* near-black body text */
+  --muted: #7A716A;          /* warm grey */
+  --cream: #FDFBF8;          /* paper / surround */
+  --sage: #F1ECE4;           /* warm neutral (badges, headers) */
+  --sage-soft: #F7F3ED;      /* lighter warm neutral */
+  --stone: #D9CFC4;
+  --line: #EEE7DC;
+  --wash: #FBEEF1;           /* pale crimson wash */
+  --wash-line: #F1D9E0;
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans: 'Figtree', 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+  --mono: 'IBM Plex Mono', 'Courier New', monospace;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -53,7 +56,7 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
    ============================================================ */
 #onboard { position: relative; padding: 96px 20px 48px; box-sizing: border-box; min-height: 100vh; display: flex;
   background:
-    radial-gradient(1200px 600px at 50% -10%, #34704A 0%, var(--forest) 45%, var(--forest-deep) 100%);
+    radial-gradient(1200px 600px at 50% -10%, #C4174E 0%, var(--forest) 45%, var(--forest-deep) 100%);
   padding: 40px 20px; }
 #onboard .card { width: 100%; max-width: 560px; text-align: center; color: #fff; margin: auto; }
 #onboard .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .34em; font-size: 12px; font-weight: 600; color: var(--gold); margin: 0 0 18px; }
@@ -113,29 +116,38 @@ body.ready #onboard { display: none; }
 .savestate { font-size: 11.5px; color: rgba(255,255,255,.6); width: 100%; text-align: right; margin-top: 2px; }
 @media (min-width: 720px) { .savestate { width: auto; margin-top: 0; } }
 
+/* The tool's own toolbar is a clean white bar (the onboarding bar #obBar keeps
+   the crimson treatment because it is not inside #app). */
+#app .appbar { background: #fff; color: var(--ink); border-bottom: 1px solid var(--line); }
+#app .appbar .brandmark { color: var(--ink); }
+#app .appbar .savestate { color: var(--muted); }
+#app .appbar .logochip { background: transparent; padding: 0; }
+#app .appbar .btn.ghost-light { color: var(--ink); border: 1px solid var(--wash-line); background: #fff; }
+#app .appbar .btn.ghost-light:hover { background: var(--wash); color: var(--forest); }
+
 .page { max-width: 1080px; margin: 0 auto; background: #fff; border: 1px solid var(--line); position: relative; }
 .stamp { position: absolute; top: 14px; right: 20px; font-size: 11.5px; line-height: 1.5; color: #D9BE93; text-align: right; }
 .appbar .logochip { display: inline-flex; align-items: center; background: #fff; border-radius: 8px; padding: 5px 12px; margin-right: auto; }
 .appbar .logochip img { height: 26px; display: block; }
 
 /* masthead band (echoes the site hero) */
-header.masthead { background: radial-gradient(900px 400px at 50% -40%, #C21247 0%, var(--forest) 55%, var(--forest-deep) 100%);
-  color: #fff; padding: 44px 48px 34px; text-align: center; }
+header.masthead { background: var(--wash); border-bottom: 2px solid var(--forest);
+  color: var(--ink); padding: 40px 48px 30px; text-align: center; }
 header.masthead .logo { max-width: 300px; max-height: 84px; height: auto; margin-bottom: 14px;
-  background: #fff; padding: 12px 20px; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.12); }
-header.masthead .logotext { font-family: var(--serif); font-size: 30px; font-weight: 600; color: #fff; }
-header.masthead .eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .3em; font-size: 11px; font-weight: 600; color: var(--gold); margin-bottom: 14px; }
-header.masthead h1 { font-family: var(--serif); margin: 0 0 6px; font-size: 30px; font-weight: 600; color: #fff; letter-spacing: .2px; }
-header.masthead .subtitle { font-size: 13.5px; color: rgba(255,255,255,.78); margin: 0; }
+  background: #fff; padding: 12px 20px; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.10); }
+header.masthead .logotext { font-family: var(--serif); font-size: 30px; font-weight: 600; color: var(--ink); }
+header.masthead .eyebrow { font-family: var(--mono); text-transform: uppercase; letter-spacing: .2em; font-size: 11px; font-weight: 500; color: var(--forest); margin-bottom: 14px; }
+header.masthead h1 { font-family: var(--serif); margin: 0 0 6px; font-size: 32px; font-weight: 600; color: var(--ink); letter-spacing: 0; }
+header.masthead .subtitle { font-size: 13.5px; color: var(--muted); margin: 0; }
 header.masthead .doctitle { font-family: var(--serif); font-style: italic; margin-top: 18px; font-size: 19px; color: var(--gold); }
 header.masthead .gold-rule { width: 52px; height: 2px; background: var(--gold); margin: 12px auto 0; }
 
 /* completeness banner */
 .health { display: flex; align-items: center; gap: 12px; padding: 14px 48px; font-size: 14px; border-bottom: 1px solid var(--line); }
-.health.ok { background: var(--sage-soft); color: var(--forest); }
+.health.ok { background: #F4F7F2; color: #2E5A3B; }
 .health.attention { background: #FBF4E4; color: var(--gold-deep); }
 .health .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.health.ok .dot { background: var(--forest); }
+.health.ok .dot { background: #2E7D46; }
 .health.attention .dot { background: var(--gold); }
 .health strong { font-weight: 600; }
 .health .items { color: var(--muted); font-size: 13px; }
@@ -144,10 +156,10 @@ header.masthead .gold-rule { width: 52px; height: 2px; background: var(--gold); 
 .statusflag strong { font-weight: 600; }
 
 /* nav */
-nav.toc { font-family: var(--sans); background: var(--cream); border-bottom: 1px solid var(--line); padding: 12px 48px; }
-nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
-nav.toc a { display: inline-block; padding: 6px 12px; font-size: 12px; letter-spacing: .03em; color: var(--ink); text-decoration: none; border-radius: 4px; }
-nav.toc a:hover { background: var(--sage); color: var(--forest); }
+nav.toc { font-family: var(--sans); background: #fff; border-bottom: 1px solid var(--line); padding: 13px 48px; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+nav.toc a { display: inline-block; padding: 7px 15px; font-size: 12.5px; font-weight: 500; letter-spacing: .01em; color: var(--muted); text-decoration: none; border-radius: 16px; background: var(--sage-soft); transition: background .15s, color .15s; }
+nav.toc a:hover { background: var(--wash); color: var(--forest); }
 
 main { padding: 30px 48px 44px; }
 section { margin-bottom: 44px; scroll-margin-top: 80px; }

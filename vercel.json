@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     { "source": "/", "destination": "/Statutory_Register.html" },
-    { "source": "/tlc", "destination": "/tlc.html" }
+    { "source": "/tlc", "destination": "/tlc.html" },
+    { "source": "/sale", "destination": "/sale.html" }
   ],
   "functions": {
     "api/companies-house.js": {
