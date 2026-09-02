@@ -102,6 +102,36 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; vertical-align: -2px; margin-right: 8px; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ---- Light onboarding (2026 refresh): crimson is an accent, not the ground ---- */
+#onboard { background: linear-gradient(180deg, var(--wash) 0%, var(--paper) 52%); padding-top: 84px; }
+#onboard .card { color: var(--ink); }
+#onboard h1 { color: var(--ink); }
+#onboard .lede { color: var(--gold-deep); }
+#onboard p.help { color: var(--muted); }
+#onboard .eyebrow { color: var(--forest); }
+#onboard .ob-brand { background: transparent; box-shadow: none; padding: 0; margin-bottom: 20px; }
+#onboard .authbox input, #onboard input[type=text] { background: #fff; border: 1px solid var(--stone); color: var(--ink); }
+#onboard .authalt { color: var(--muted); }
+#onboard .authalt a { color: var(--forest); }
+#onboard .obfoot { color: var(--muted); }
+#onboard .obfoot a { color: var(--muted); border-bottom-color: var(--wash-line); }
+#onboard .obfoot a:hover { color: var(--forest); border-color: var(--gold); }
+#onboard .obfoot span { color: var(--stone); }
+#onboard .ob-status { color: var(--ink); }
+#onboard .ob-status:not(:empty) { background: var(--wash); border-color: var(--gold); }
+#onboard .ob-results .none { color: var(--muted); }
+#onboard .bookshead { color: var(--gold-deep); }
+#onboard .bookrow .del { color: var(--muted); border-color: var(--wash-line); }
+#onboard .bookrow .del:hover { background: var(--wash); }
+#obEmail { color: var(--muted); }
+.spinner { border: 2px solid rgba(0,0,0,.14); border-top-color: var(--forest); }
+/* the onboarding top bar goes light too */
+#obBar { background: #fff; color: var(--ink); border-bottom: 1px solid var(--line); }
+#obBar .brandmark { color: var(--ink); }
+#obBar .logochip { background: transparent; padding: 0; }
+#obBar .btn.ghost-light { color: var(--ink); border: 1px solid var(--wash-line); background: #fff; }
+#obBar .btn.ghost-light:hover { background: var(--wash); color: var(--forest); }
+
 /* ============================================================
    APP (the book)
    ============================================================ */
@@ -1606,8 +1636,9 @@ function init() {
   // Nav bars: small logo on a white chip so the crimson mark doesn't sink into the red.
   const chip = '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
   document.getElementById("appBrand").innerHTML = chip;
+  // Onboarding top-left logo links out to the main Eason Law site.
   const obb = document.getElementById("obBarBrand");
-  if (obb) obb.innerHTML = chip;
+  if (obb) obb.innerHTML = '<a href="https://easonlaw.co.uk" aria-label="Eason Law home" style="display:inline-flex;text-decoration:none;">' + chip + '</a>';
   // Onboarding hero: the real logo on the same white chip, replacing the text eyebrow.
   const ob = document.getElementById("obBrand");
   if (ob) ob.innerHTML = '<img src="' + EL_LOGO + '" alt="Eason Law">';
