@@ -1639,9 +1639,9 @@ function init() {
   // Onboarding top-left logo links out to the main Eason Law site.
   const obb = document.getElementById("obBarBrand");
   if (obb) obb.innerHTML = '<a href="https://easonlaw.co.uk" aria-label="Eason Law home" style="display:inline-flex;text-decoration:none;">' + chip + '</a>';
-  // Onboarding hero: the real logo on the same white chip, replacing the text eyebrow.
+  // Onboarding hero logo — also a link to the main Eason Law site.
   const ob = document.getElementById("obBrand");
-  if (ob) ob.innerHTML = '<img src="' + EL_LOGO + '" alt="Eason Law">';
+  if (ob) ob.innerHTML = '<a href="https://easonlaw.co.uk" aria-label="Eason Law home" style="display:inline-flex;text-decoration:none;"><img src="' + EL_LOGO + '" alt="Eason Law"></a>';
   document.getElementById("btnLogo").onclick = () => document.getElementById("logoInput").click();
   document.getElementById("logoInput").onchange = e => { if (e.target.files[0]) handleLogo(e.target.files[0]); };
   document.getElementById("btnRemoveLogo").onclick = () => {
