@@ -1615,6 +1615,10 @@ function init() {
       }
       document.getElementById("obResults").innerHTML = ""; // clear list so the status is visible by the box
       _localOnly = false;
+      // Start every NEW build from a blank register so we never merge the new
+      // company's people into whatever was last open. (Update-from-CH, which is a
+      // separate button, still merges into the current company on purpose.)
+      data = blankTemplate();
       pullCompany(num, document.getElementById("obStatus"), () => { enterApp(); cloudCreateCurrent(); });
     };
     if (_selected && (v === _selected.title || v === _selected.number)) go(_selected.number);
