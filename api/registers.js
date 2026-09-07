@@ -88,7 +88,8 @@ module.exports = async function handler(req, res) {
       const { error } = await admin().from("registers").upsert(row, { onConflict: "user_id,company_number" });
       if (error) { res.statusCode = 500; return res.end(JSON.stringify({ error: "Could not save the register." })); }
       // Additional companies raise the subscription quantity (pro-rated by Stripe).
-      if ((count || 0) >= 1) await syncQuantity(g.user.id);
+      // Never meter admin/comp (unlimited) accounts — they are not billed.
+      if (!(g.sub && g.sub.unlimited) && (count || 0) >= 1) await syncQuantity(g.user.id);
       res.statusCode = 200; return res.end(JSON.stringify({ saved: true }));
     }
     const { error } = await admin().from("registers").upsert(row, { onConflict: "user_id,company_number" });
@@ -98,7 +99,7 @@ module.exports = async function handler(req, res) {
 
   if (method === "DELETE") {
     await admin().from("registers").delete().eq("user_id", g.user.id).eq("company_number", number);
-    await syncQuantity(g.user.id);
+    if (!(g.sub && g.sub.unlimited)) await syncQuantity(g.user.id);
     res.statusCode = 200; return res.end(JSON.stringify({ deleted: true }));
   }
 
