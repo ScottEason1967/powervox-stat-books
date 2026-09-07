@@ -79,8 +79,9 @@ module.exports = async function handler(req, res) {
         .select("company_number", { count: "exact", head: true }).eq("user_id", g.user.id);
       // One subscription, one company. MAX_COMPANIES exists for a future
       // multi-company tier but the product model is strictly one by default.
+      // Admin/comp accounts (unlimited=true) bypass the cap entirely.
       const cap = Math.max(1, parseInt(process.env.MAX_COMPANIES || "1", 10) || 1);
-      if ((count || 0) >= cap) {
+      if (!(g.sub && g.sub.unlimited) && (count || 0) >= cap) {
         res.statusCode = 403;
         return res.end(JSON.stringify({ error: "Your subscription covers one company. Remove your existing company first, or get in touch about looking after more than one." }));
       }

@@ -1602,13 +1602,14 @@ function init() {
   document.getElementById("obGo").onclick = () => {
     const v = document.getElementById("obNum").value;
     const go = num => {
-      if (_account.state === "books" && _account.books.length >= 1 &&
+      // Admin/comp accounts (unlimited) skip the one-company guards entirely.
+      if (!_account.unlimited && _account.state === "books" && _account.books.length >= 1 &&
           !_account.books.some(b => b.company_number === String(num).toUpperCase())) {
         alert("Your subscription covers one company. To switch companies, remove your existing one first — or get in touch if you need books for more than one.");
         return;
       }
       // First build commits the subscription's single company slot — check before spending it.
-      if (_account.state === "books" && _account.books.length === 0) {
+      if (!_account.unlimited && _account.state === "books" && _account.books.length === 0) {
         const label = (_selected && _selected.title) ? _selected.title + " (" + num + ")" : num;
         if (!confirm("Your subscription covers ONE company, and this will be it:\n\n" + label + "\n\nBuild the statutory books for this company?")) return;
       }
@@ -1682,7 +1683,7 @@ let _sb = null;              // supabase client
 let _token = "";             // current access token
 let _localOnly = false;      // sample/offline books never sync
 let _cloudTimer = null;
-const _account = { state: "loading", email: "", books: [] };
+const _account = { state: "loading", email: "", books: [], unlimited: false };
 
 function authHeaders(base) {
   const h = Object.assign({}, base || {});
@@ -1851,6 +1852,7 @@ async function refreshAccount() {
   if (info.status === "legacy") { setAccountState("legacy"); if (hasData()) enterApp(); return; }
   if (info.status === "signedout" || info.status === "error") { setAccountState("auth"); return; }
   _account.email = info.email || "";
+  _account.unlimited = !!info.unlimited;
   if (info.status === "active" || info.status === "trialing") {
     setAccountState("books");
     loadBooks();

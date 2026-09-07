@@ -48,9 +48,10 @@ async function requireSubscriber(req) {
   if (!u.ok) return u;
   if (u.legacy) return u; // pre-launch: no gate until Supabase is configured
   try {
-    const { data } = await admin().from("subscriptions").select("status, quantity, stripe_customer_id, stripe_subscription_id").eq("user_id", u.user.id).maybeSingle();
+    const { data } = await admin().from("subscriptions").select("status, quantity, stripe_customer_id, stripe_subscription_id, unlimited").eq("user_id", u.user.id).maybeSingle();
     const status = (data && data.status) || "none";
-    if (status === "active" || status === "trialing") {
+    // An admin/comp account (unlimited=true) passes the gate regardless of status.
+    if (status === "active" || status === "trialing" || (data && data.unlimited)) {
       return { ok: true, user: u.user, sub: data };
     }
     return { ok: false, code: 402, msg: "An active subscription is needed for this.", user: u.user, sub: data || null };

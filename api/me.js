@@ -12,13 +12,16 @@ module.exports = async function handler(req, res) {
   if (u.legacy) { res.statusCode = 200; return res.end(JSON.stringify({ status: "legacy" })); }
   try {
     const { data } = await admin().from("subscriptions")
-      .select("status, quantity, current_period_end")
+      .select("status, quantity, current_period_end, unlimited")
       .eq("user_id", u.user.id).maybeSingle();
+    const unlimited = !!(data && data.unlimited);
     res.statusCode = 200;
     res.end(JSON.stringify({
       email: u.user.email,
-      status: (data && data.status) || "none",
+      // An unlimited/comp account is treated as active so the product opens.
+      status: unlimited ? "active" : ((data && data.status) || "none"),
       quantity: (data && data.quantity) || 0,
+      unlimited: unlimited,
       currentPeriodEnd: (data && data.current_period_end) || null
     }));
   } catch (e) {
