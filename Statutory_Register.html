@@ -1368,16 +1368,43 @@ function generateShareCert(ci) {
   });
 }
 
-// Build a printable A4 share certificate from a resolved holder object and open
-// it in a new window with a Print / Save-as-PDF button.
+// Open a printable A4 share certificate. No Eason Law branding on the certificate
+// itself: it carries the customer's own logo where one is set, and its colours are
+// themed from that logo. With no logo it falls back to a neutral dark/gold scheme.
 function openShareCertificate(o) {
+  const logo = CONFIG.logoUrl || "";
+  if (logo) {
+    // Derive the certificate's colours from the customer's logo (data-URL, so the
+    // canvas read is same-origin safe), then render.
+    const img = new Image();
+    img.onload = () => {
+      let scheme = null;
+      try {
+        const w = 64, h = Math.max(1, Math.round(64 * (img.height / img.width)));
+        const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
+        const px = ctx.getImageData(0, 0, w, h).data;
+        const pick = pickPrimaryAccent(quantiseColours(px, 1));
+        if (pick) { const m = deriveTheme(pick.primary, pick.accent); scheme = { primary: m["--forest"], accent: m["--gold"] }; }
+      } catch (e) { /* fall back to the neutral scheme */ }
+      renderShareCert(o, logo, scheme);
+    };
+    img.onerror = () => renderShareCert(o, logo, null);
+    img.src = logo;
+  } else {
+    renderShareCert(o, "", null);
+  }
+}
+
+function renderShareCert(o, logo, scheme) {
   const c = data.company || {};
   const r = o;
   const cls = o.cls || "Ordinary";
   const nominal = o.nominal || "";
   const paidUp = o.paidUp || "Fully paid";
   const address = o.address || "";
-  const logo = CONFIG.logoUrl || (typeof EL_LOGO !== "undefined" ? EL_LOGO : "");
+  const brand = (scheme && scheme.primary) || "#4a453d"; // neutral dark when no logo
+  const accent = (scheme && scheme.accent) || "#9a7b1f";
   const e = esc;
 
   let holds = "is the registered holder of";
@@ -1386,22 +1413,22 @@ function openShareCertificate(o) {
       e("Share Certificate " + (r.certNo || "") + " — " + (c.name || "")) + '</title>' +
     '<style>' +
     '@page { size: A4; margin: 18mm; }' +
-    ':root { --ink:#1d1a17; --crimson:#C70B46; --gold:#9a7b1f; --line:#d8cfc4; }' +
+    ':root { --ink:#1d1a17; --brand:' + brand + '; --gold:' + accent + '; --line:#d8cfc4; }' +
     '* { box-sizing: border-box; }' +
     'body { font-family: Georgia, "Times New Roman", serif; color: var(--ink); margin: 0; padding: 28px; background: #f2ede6; }' +
-    '.sheet { max-width: 780px; margin: 0 auto; background: #fffdf9; border: 3px double var(--crimson); padding: 44px 52px 56px; box-shadow: 0 8px 30px rgba(0,0,0,.12); }' +
+    '.sheet { max-width: 780px; margin: 0 auto; background: #fffdf9; border: 3px double var(--brand); padding: 44px 52px 56px; box-shadow: 0 8px 30px rgba(0,0,0,.12); }' +
     '.top { display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--line); padding-bottom: 20px; }' +
     '.top img { height: 52px; width: auto; }' +
     '.co { flex: 1; }' +
     '.co h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: .01em; }' +
     '.co .meta { font-size: 12.5px; color: #5c554c; font-family: Arial, Helvetica, sans-serif; }' +
     '.title { text-align: center; margin: 30px 0 6px; }' +
-    '.title h2 { font-size: 20px; letter-spacing: .26em; margin: 0; color: var(--crimson); text-transform: uppercase; }' +
+    '.title h2 { font-size: 20px; letter-spacing: .26em; margin: 0; color: var(--brand); text-transform: uppercase; }' +
     '.certno { text-align: center; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #5c554c; margin-bottom: 26px; }' +
     '.body { font-size: 15.5px; line-height: 1.75; }' +
     '.body .name { font-size: 18px; font-weight: bold; }' +
     '.holding { text-align: center; margin: 22px 0; padding: 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }' +
-    '.holding .n { font-size: 26px; font-weight: bold; color: var(--crimson); }' +
+    '.holding .n { font-size: 26px; font-weight: bold; color: var(--brand); }' +
     '.holding .d { font-size: 14px; color: #5c554c; font-family: Arial, Helvetica, sans-serif; margin-top: 4px; }' +
     '.sigs { display: flex; gap: 40px; margin-top: 54px; }' +
     '.sig { flex: 1; }' +
@@ -1409,8 +1436,8 @@ function openShareCertificate(o) {
     '.sig .lbl { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #5c554c; margin-top: 6px; }' +
     '.note { margin-top: 34px; font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #7a7269; line-height: 1.5; border-top: 1px solid var(--line); padding-top: 14px; }' +
     '.bar { text-align: center; margin: 22px 0 0; }' +
-    '.bar button { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: bold; color: #fff; background: var(--crimson); border: 0; border-radius: 8px; padding: 10px 22px; cursor: pointer; }' +
-    '@media print { body { background: #fff; padding: 0; } .sheet { box-shadow: none; border-color: var(--crimson); } .bar { display: none; } }' +
+    '.bar button { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: bold; color: #fff; background: var(--brand); border: 0; border-radius: 8px; padding: 10px 22px; cursor: pointer; }' +
+    '@media print { body { background: #fff; padding: 0; } .sheet { box-shadow: none; border-color: var(--brand); } .bar { display: none; } }' +
     '</style></head><body>' +
     '<div class="sheet">' +
       '<div class="top">' + (logo ? '<img src="' + logo + '" alt="">' : '') +
