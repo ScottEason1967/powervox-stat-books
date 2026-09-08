@@ -299,6 +299,14 @@ body.mode-edit .view-only { display: none; }
 .modal p.sub { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; }
 .modal textarea { width: 100%; min-height: 130px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; padding: 10px; border: 1px solid var(--stone); border-radius: 6px; }
 .modal .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.cert-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.cert-form label { display: flex; flex-direction: column; font-family: var(--sans); font-size: 11.5px;
+  font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); gap: 5px; }
+.cert-form label.full { grid-column: 1 / -1; }
+.cert-form input, .cert-form select, .cert-form textarea { font-family: var(--sans); font-size: 14px; font-weight: 400;
+  letter-spacing: normal; text-transform: none; color: var(--ink); padding: 8px 10px;
+  border: 1px solid var(--stone); border-radius: 6px; background: #fff; width: 100%; min-height: auto; }
+.cert-form textarea.short { min-height: 48px; resize: vertical; font-family: var(--sans); }
 
 @media print {
   .appbar, nav.toc, .editor-only, .suite, .health, #onboard { display: none !important; }
@@ -394,6 +402,7 @@ body.mode-edit .view-only { display: none; }
     <div class="menu">
       <button type="button" class="btn ghost-light menu-trigger" aria-haspopup="true">Document <span class="caret">▾</span></button>
       <div class="menu-panel">
+        <button class="btn ghost-light" id="btnNewCert">New share certificate</button>
         <button class="btn ghost-light" id="btnEdit">Edit details</button>
         <button class="btn ghost-light" id="btnPrint">Print</button>
       </div>
@@ -732,15 +741,14 @@ function renderView() {
   const m = data.members;
   h += '<section id="members"><h2>3. Register of Members</h2>';
   if (m.note) h += '<p class="section-note">' + esc(m.note) + "</p>";
-  h += "<h3>" + esc(m.asAtNote || "Current members") + "</h3><table><thead><tr><th>Member</th><th>Address</th><th>Class</th><th class=\"numeric\">Shares held</th><th class=\"numeric\">Nominal value</th><th>Paid up</th><th class=\"gen-col\"></th></tr></thead><tbody>";
+  h += "<h3>" + esc(m.asAtNote || "Current members") + "</h3><table><thead><tr><th>Member</th><th>Address</th><th>Class</th><th class=\"numeric\">Shares held</th><th class=\"numeric\">Nominal value</th><th>Paid up</th></tr></thead><tbody>";
   let totShares = 0;
-  m.current.forEach((x, mi) => {
+  m.current.forEach(x => {
     if (!x.member) return;
     const n = parseInt(String(x.shares).replace(/[^0-9]/g, ""), 10); if (!isNaN(n)) totShares += n;
-    const gen = '<button type="button" class="gen-btn" onclick="generateCertFromMember(' + mi + ')">Certificate</button>';
-    h += "<tr><td><strong>" + esc(x.member) + "</strong></td><td>" + esc(x.address) + "</td><td>" + esc(x.cls) + "</td><td class=\"numeric\">" + esc(x.shares) + "</td><td class=\"numeric\">" + esc(x.nominal) + "</td><td>" + esc(x.paidUp) + "</td><td class=\"gen-col\">" + gen + "</td></tr>";
+    h += "<tr><td><strong>" + esc(x.member) + "</strong></td><td>" + esc(x.address) + "</td><td>" + esc(x.cls) + "</td><td class=\"numeric\">" + esc(x.shares) + "</td><td class=\"numeric\">" + esc(x.nominal) + "</td><td>" + esc(x.paidUp) + "</td></tr>";
   });
-  if (totShares > 0) h += '<tr class="totals"><td colspan="3">Total issued share capital</td><td class="numeric">' + totShares.toLocaleString() + '</td><td class="numeric"></td><td>Fully paid</td><td class="gen-col"></td></tr>';
+  if (totShares > 0) h += '<tr class="totals"><td colspan="3">Total issued share capital</td><td class="numeric">' + totShares.toLocaleString() + '</td><td class="numeric"></td><td>Fully paid</td></tr>';
   h += "</tbody></table>";
   if (m.history && m.history.some(x => x.member)) {
     h += "<h3>Member holding history</h3>";
@@ -797,7 +805,7 @@ function renderView() {
   ce.rows.forEach((r, ci) => {
     if (!r.certNo && !r.holder) return;
     const st = r.statusType === "current" ? badge("current", r.status || "current") : badge("ceased", r.status || "cancelled");
-    const gen = r.holder ? '<button type="button" class="gen-btn" onclick="generateShareCert(' + ci + ')">Generate</button>' : "";
+    const gen = '<button type="button" class="gen-btn" onclick="openCertModal(' + ci + ')">Generate</button>';
     h += "<tr><td>" + esc(r.certNo) + "</td><td>" + esc(r.holder) + "</td><td>" + esc(r.cls) + "</td><td class=\"numeric\">" + esc(r.shares) + "</td><td>" + esc(r.issued) + "</td><td>" + st + "</td><td class=\"gen-col\">" + gen + "</td></tr>";
   });
   h += "</tbody></table>";
@@ -1181,32 +1189,129 @@ function exportRegister() {
   downloadFile(html, (data.company.name || "statutory-register").replace(/[^a-z0-9]+/gi, "_") + "_Statutory_Register.html", "text/html");
 }
 
-// Entry point from the Share Certificates index: resolve holder detail from the
-// members register (address / nominal / paid-up) where the names match.
+// The next certificate number: one above the highest number already used in the
+// index. Purely numeric so it is easy to override with anything (e.g. "001", "A-1").
+function nextCertNo() {
+  let max = 0;
+  ((data.certificates && data.certificates.rows) || []).forEach(r => {
+    const n = parseInt(String(r.certNo || "").replace(/[^0-9]/g, ""), 10);
+    if (!isNaN(n) && n > max) max = n;
+  });
+  return String(max + 1);
+}
+
+function todayLong() {
+  return new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+// The certificate workflow. Opens a form pre-filled from the record, exposes any
+// blanks as fields, and on save writes the certificate back into the register
+// (creating or updating the Share Certificates index row) before optionally
+// opening the printable certificate. ci = row index to edit, or null for new.
+function openCertModal(ci) {
+  const rows = (data.certificates && data.certificates.rows) || [];
+  const editing = (ci != null && rows[ci]) ? rows[ci] : null;
+  const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const members = ((data.members && data.members.current) || []).filter(m => m.member);
+  // Seed values: an edited row first, then a member match to fill its blanks.
+  const seedMem = editing ? (members.find(m => norm(m.member) === norm(editing.holder)) || {}) : {};
+  const v = {
+    certNo: editing ? (editing.certNo || "") : nextCertNo(),
+    holder: editing ? (editing.holder || "") : "",
+    address: editing ? (editing.address || seedMem.address || "") : "",
+    cls: editing ? (editing.cls || seedMem.cls || "Ordinary") : "Ordinary",
+    shares: editing ? (editing.shares || seedMem.shares || "") : "",
+    nominal: editing ? (editing.nominal || seedMem.nominal || "") : "",
+    paidUp: editing ? (editing.paidUp || seedMem.paidUp || "Fully paid") : "Fully paid",
+    issued: editing ? (editing.issued || "") : todayLong(),
+    statusType: editing ? (editing.statusType || "current") : "current"
+  };
+  const e = esc;
+  const memOpts = ['<option value="">— choose a member to fill the details —</option>']
+    .concat(members.map((m, i) => '<option value="' + i + '">' + e(m.member) + (m.cls ? " · " + e(m.cls) : "") + '</option>')).join("");
+
+  const mb = document.getElementById("modalBody");
+  mb.innerHTML =
+    '<h2>' + (editing ? "Edit share certificate" : "New share certificate") + '</h2>' +
+    '<p class="sub">Pre-filled from the register where possible. Anything blank you can complete here, and it is saved back into the register.</p>' +
+    '<div class="cert-form">' +
+      (members.length ? '<label class="full">Fill from member<select id="cfMember">' + memOpts + '</select></label>' : '') +
+      '<label>Certificate No.<input id="cfCertNo" value="' + e(v.certNo) + '"></label>' +
+      '<label>Issue date<input id="cfIssued" value="' + e(v.issued) + '"></label>' +
+      '<label class="full">Registered holder<input id="cfHolder" value="' + e(v.holder) + '"></label>' +
+      '<label class="full">Holder’s address<textarea id="cfAddress" class="short">' + e(v.address) + '</textarea></label>' +
+      '<label>Class of share<input id="cfCls" value="' + e(v.cls) + '"></label>' +
+      '<label>Number of shares<input id="cfShares" value="' + e(v.shares) + '"></label>' +
+      '<label>Nominal value (each)<input id="cfNominal" value="' + e(v.nominal) + '" placeholder="e.g. £1.00"></label>' +
+      '<label>Paid up<input id="cfPaidUp" value="' + e(v.paidUp) + '"></label>' +
+      '<label>Status<select id="cfStatus"><option value="current"' + (v.statusType !== "ceased" ? " selected" : "") + '>Current</option><option value="ceased"' + (v.statusType === "ceased" ? " selected" : "") + '>Cancelled</option></select></label>' +
+    '</div>' +
+    '<div class="row"><button class="btn gold" id="cfSaveOpen">Save & open certificate</button><button class="btn" id="cfSave">Save to register</button><button class="btn ghost" id="cfCancel">Cancel</button></div>';
+  document.getElementById("modalBack").classList.add("open");
+
+  // Selecting a member fills the detail fields (name, address, class, shares, etc.).
+  const msel = document.getElementById("cfMember");
+  if (msel) msel.onchange = () => {
+    const m = members[parseInt(msel.value, 10)];
+    if (!m) return;
+    document.getElementById("cfHolder").value = m.member || "";
+    document.getElementById("cfAddress").value = m.address || "";
+    document.getElementById("cfCls").value = m.cls || "Ordinary";
+    document.getElementById("cfShares").value = m.shares || "";
+    document.getElementById("cfNominal").value = m.nominal || "";
+    document.getElementById("cfPaidUp").value = m.paidUp || "Fully paid";
+  };
+
+  const collect = () => ({
+    certNo: document.getElementById("cfCertNo").value.trim(),
+    holder: document.getElementById("cfHolder").value.trim(),
+    address: document.getElementById("cfAddress").value.trim(),
+    cls: document.getElementById("cfCls").value.trim(),
+    shares: document.getElementById("cfShares").value.trim(),
+    nominal: document.getElementById("cfNominal").value.trim(),
+    paidUp: document.getElementById("cfPaidUp").value.trim(),
+    issued: document.getElementById("cfIssued").value.trim(),
+    statusType: document.getElementById("cfStatus").value
+  });
+
+  const persist = () => {
+    const f = collect();
+    if (!f.holder) { alert("Please give the registered holder's name."); return null; }
+    const row = {
+      certNo: f.certNo, holder: f.holder, cls: f.cls, shares: f.shares,
+      issued: f.issued, address: f.address, nominal: f.nominal, paidUp: f.paidUp,
+      statusType: f.statusType, status: f.statusType === "ceased" ? "cancelled" : "current"
+    };
+    if (!data.certificates) data.certificates = { rows: [] };
+    if (!data.certificates.rows) data.certificates.rows = [];
+    if (editing) {
+      data.certificates.rows[ci] = row;
+    } else {
+      // Drop the empty placeholder row a blank template carries, then add.
+      data.certificates.rows = data.certificates.rows.filter(r => r.certNo || r.holder);
+      data.certificates.rows.push(row);
+    }
+    save();
+    renderView();
+    return row;
+  };
+
+  const close = () => document.getElementById("modalBack").classList.remove("open");
+  document.getElementById("cfCancel").onclick = close;
+  document.getElementById("cfSave").onclick = () => { if (persist()) close(); };
+  document.getElementById("cfSaveOpen").onclick = () => { const r = persist(); if (r) { close(); openShareCertificate(r); } };
+}
+
+// Kept for any direct call: resolve holder detail from the members register.
 function generateShareCert(ci) {
   const r = (data.certificates && data.certificates.rows && data.certificates.rows[ci]) || null;
   if (!r) { alert("Couldn't find that certificate row."); return; }
   const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
   const mem = ((data.members && data.members.current) || []).find(m => norm(m.member) === norm(r.holder)) || {};
   openShareCertificate({
-    certNo: r.certNo, holder: r.holder, address: mem.address || "",
+    certNo: r.certNo, holder: r.holder, address: r.address || mem.address || "",
     cls: r.cls || mem.cls || "Ordinary", shares: r.shares || mem.shares || "",
-    nominal: mem.nominal || "", paidUp: mem.paidUp || "Fully paid", issued: r.issued || ""
-  });
-}
-
-// Entry point from the Register of Members: everything a certificate needs is
-// already on the member row, so no name-matching is required.
-function generateCertFromMember(mi) {
-  const m = (data.members && data.members.current && data.members.current[mi]) || null;
-  if (!m || !m.member) { alert("Couldn't find that member."); return; }
-  // Re-use an existing certificate number for this holder if the index has one.
-  const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
-  const cert = ((data.certificates && data.certificates.rows) || []).find(r => norm(r.holder) === norm(m.member) && r.certNo) || {};
-  openShareCertificate({
-    certNo: cert.certNo || "", holder: m.member, address: m.address || "",
-    cls: m.cls || "Ordinary", shares: m.shares || "", nominal: m.nominal || "",
-    paidUp: m.paidUp || "Fully paid", issued: cert.issued || ""
+    nominal: r.nominal || mem.nominal || "", paidUp: r.paidUp || mem.paidUp || "Fully paid", issued: r.issued || ""
   });
 }
 
@@ -1802,6 +1907,7 @@ function init() {
   document.getElementById("btnDownload").onclick = exportExcel;
   document.getElementById("btnPrint").onclick = () => window.print();
   document.getElementById("btnEdit").onclick = toggleEdit;
+  document.getElementById("btnNewCert").onclick = () => openCertModal(null);
   setupMenus();
   // Nav bars: small logo on a white chip so the crimson mark doesn't sink into the red.
   const chip = '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
