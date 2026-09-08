@@ -155,6 +155,17 @@ body.ready #onboard { display: none; }
 #app .appbar .btn.ghost-light { color: var(--ink); border: 1px solid var(--wash-line); background: #fff; }
 #app .appbar .btn.ghost-light:hover { background: var(--wash); color: var(--forest); }
 
+/* Toolbar category menus — hover / focus reveals a small panel of grouped actions. */
+.menu { position: relative; display: inline-flex; }
+.menu-trigger .caret { font-size: 9px; margin-left: 5px; opacity: .7; }
+.menu-panel { position: absolute; top: calc(100% + 6px); left: 0; min-width: 190px;
+  background: #fff; border: 1px solid var(--wash-line); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 6px; z-index: 70;
+  display: none; flex-direction: column; gap: 4px; }
+.menu:hover > .menu-panel, .menu:focus-within > .menu-panel { display: flex; }
+.menu-panel .btn { width: 100%; justify-content: flex-start; text-align: left; letter-spacing: .02em; }
+.menu-panel::before { content: ""; position: absolute; top: -6px; left: 0; right: 0; height: 6px; } /* hover bridge */
+
 .page { max-width: 1080px; margin: 0 auto; background: #fff; border: 1px solid var(--line); position: relative; }
 .stamp { position: absolute; top: 14px; right: 20px; font-size: 11.5px; line-height: 1.5; color: #D9BE93; text-align: right; }
 .appbar .logochip { display: inline-flex; align-items: center; background: #fff; border-radius: 8px; padding: 5px 12px; margin-right: auto; }
@@ -378,16 +389,31 @@ body.mode-edit .view-only { display: none; }
 <div id="app">
   <div class="appbar">
     <div class="brandmark" id="appBrand">Eason Law<small>Statutory Registers</small></div>
-    <button class="btn gold" id="btnDownload">Download</button>
     <button class="btn mulberry" id="btnUpdate">Update from Companies House</button>
-    <button class="btn ghost-light" id="btnPrint">Print</button>
-    <button class="btn ghost-light" id="btnEdit">Edit details</button>
-    <button class="btn ghost-light" id="btnLogo">Add your logo</button>
-    <button class="btn ghost-light" id="btnRemoveLogo" style="display:none">Remove logo</button>
-    <button class="btn ghost-light" id="btnTheme">Theme from logo</button>
-    <button class="btn ghost-light" id="btnResetTheme">Reset theme</button>
-    <button class="btn ghost-light" id="btnAccount" style="display:none">Billing</button>
-    <button class="btn ghost-light" id="btnSignOut" style="display:none">Sign out</button>
+    <button class="btn gold" id="btnDownload">Download</button>
+    <div class="menu">
+      <button type="button" class="btn ghost-light menu-trigger" aria-haspopup="true">Document <span class="caret">▾</span></button>
+      <div class="menu-panel">
+        <button class="btn ghost-light" id="btnEdit">Edit details</button>
+        <button class="btn ghost-light" id="btnPrint">Print</button>
+      </div>
+    </div>
+    <div class="menu">
+      <button type="button" class="btn ghost-light menu-trigger" aria-haspopup="true">Branding <span class="caret">▾</span></button>
+      <div class="menu-panel">
+        <button class="btn ghost-light" id="btnLogo">Add your logo</button>
+        <button class="btn ghost-light" id="btnRemoveLogo" style="display:none">Remove logo</button>
+        <button class="btn ghost-light" id="btnTheme">Theme from logo</button>
+        <button class="btn ghost-light" id="btnResetTheme">Reset theme</button>
+      </div>
+    </div>
+    <div class="menu" id="ddAccount" style="display:none">
+      <button type="button" class="btn ghost-light menu-trigger" aria-haspopup="true">Account <span class="caret">▾</span></button>
+      <div class="menu-panel">
+        <button class="btn ghost-light" id="btnAccount">Billing</button>
+        <button class="btn ghost-light" id="btnSignOut">Sign out</button>
+      </div>
+    </div>
     <div class="savestate" id="saveState"></div>
     <input type="file" id="logoInput" accept="image/*" style="display:none">
     <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
@@ -1842,6 +1868,7 @@ function setAccountState(state) {
   show("obResults", state === "books" || state === "legacy");
   show("obStatus", state === "books" || state === "legacy");
   const authed = (state === "books" || state === "subscribe");
+  show("ddAccount", authed);
   show("btnAccount", authed);
   show("btnSignOut", authed);
   const acct = document.getElementById("obAcct");
