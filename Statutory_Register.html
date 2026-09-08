@@ -741,14 +741,15 @@ function renderView() {
   const m = data.members;
   h += '<section id="members"><h2>3. Register of Members</h2>';
   if (m.note) h += '<p class="section-note">' + esc(m.note) + "</p>";
-  h += "<h3>" + esc(m.asAtNote || "Current members") + "</h3><table><thead><tr><th>Member</th><th>Address</th><th>Class</th><th class=\"numeric\">Shares held</th><th class=\"numeric\">Nominal value</th><th>Paid up</th></tr></thead><tbody>";
+  h += "<h3>" + esc(m.asAtNote || "Current members") + "</h3><table><thead><tr><th>Member</th><th>Address</th><th>Class</th><th class=\"numeric\">Shares held</th><th class=\"numeric\">Nominal value</th><th>Paid up</th><th class=\"gen-col\"></th></tr></thead><tbody>";
   let totShares = 0;
-  m.current.forEach(x => {
+  m.current.forEach((x, mi) => {
     if (!x.member) return;
     const n = parseInt(String(x.shares).replace(/[^0-9]/g, ""), 10); if (!isNaN(n)) totShares += n;
-    h += "<tr><td><strong>" + esc(x.member) + "</strong></td><td>" + esc(x.address) + "</td><td>" + esc(x.cls) + "</td><td class=\"numeric\">" + esc(x.shares) + "</td><td class=\"numeric\">" + esc(x.nominal) + "</td><td>" + esc(x.paidUp) + "</td></tr>";
+    const gen = '<button type="button" class="gen-btn" onclick="openCertForMember(' + mi + ')">Share cert</button>';
+    h += "<tr><td><strong>" + esc(x.member) + "</strong></td><td>" + esc(x.address) + "</td><td>" + esc(x.cls) + "</td><td class=\"numeric\">" + esc(x.shares) + "</td><td class=\"numeric\">" + esc(x.nominal) + "</td><td>" + esc(x.paidUp) + "</td><td class=\"gen-col\">" + gen + "</td></tr>";
   });
-  if (totShares > 0) h += '<tr class="totals"><td colspan="3">Total issued share capital</td><td class="numeric">' + totShares.toLocaleString() + '</td><td class="numeric"></td><td>Fully paid</td></tr>';
+  if (totShares > 0) h += '<tr class="totals"><td colspan="3">Total issued share capital</td><td class="numeric">' + totShares.toLocaleString() + '</td><td class="numeric"></td><td>Fully paid</td><td class="gen-col"></td></tr>';
   h += "</tbody></table>";
   if (m.history && m.history.some(x => x.member)) {
     h += "<h3>Member holding history</h3>";
@@ -1208,21 +1209,24 @@ function todayLong() {
 // blanks as fields, and on save writes the certificate back into the register
 // (creating or updating the Share Certificates index row) before optionally
 // opening the printable certificate. ci = row index to edit, or null for new.
-function openCertModal(ci) {
+function openCertModal(ci, seedMember) {
   const rows = (data.certificates && data.certificates.rows) || [];
   const editing = (ci != null && rows[ci]) ? rows[ci] : null;
   const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
   const members = ((data.members && data.members.current) || []).filter(m => m.member);
-  // Seed values: an edited row first, then a member match to fill its blanks.
-  const seedMem = editing ? (members.find(m => norm(m.member) === norm(editing.holder)) || {}) : {};
+  // Seed values: an edited row first; for a new certificate started from a member
+  // row, pull that member's detail in as the starting point.
+  const seedMem = editing
+    ? (members.find(m => norm(m.member) === norm(editing.holder)) || {})
+    : (seedMember || {});
   const v = {
     certNo: editing ? (editing.certNo || "") : nextCertNo(),
-    holder: editing ? (editing.holder || "") : "",
-    address: editing ? (editing.address || seedMem.address || "") : "",
-    cls: editing ? (editing.cls || seedMem.cls || "Ordinary") : "Ordinary",
-    shares: editing ? (editing.shares || seedMem.shares || "") : "",
-    nominal: editing ? (editing.nominal || seedMem.nominal || "") : "",
-    paidUp: editing ? (editing.paidUp || seedMem.paidUp || "Fully paid") : "Fully paid",
+    holder: editing ? (editing.holder || "") : (seedMem.member || ""),
+    address: editing ? (editing.address || seedMem.address || "") : (seedMem.address || ""),
+    cls: editing ? (editing.cls || seedMem.cls || "Ordinary") : (seedMem.cls || "Ordinary"),
+    shares: editing ? (editing.shares || seedMem.shares || "") : (seedMem.shares || ""),
+    nominal: editing ? (editing.nominal || seedMem.nominal || "") : (seedMem.nominal || ""),
+    paidUp: editing ? (editing.paidUp || seedMem.paidUp || "Fully paid") : (seedMem.paidUp || "Fully paid"),
     issued: editing ? (editing.issued || "") : todayLong(),
     statusType: editing ? (editing.statusType || "current") : "current"
   };
@@ -1251,6 +1255,10 @@ function openCertModal(ci) {
 
   // Selecting a member fills the detail fields (name, address, class, shares, etc.).
   const msel = document.getElementById("cfMember");
+  if (msel && !editing && seedMem && seedMem.member) {
+    const si = members.findIndex(m => norm(m.member) === norm(seedMem.member));
+    if (si >= 0) msel.value = String(si);
+  }
   if (msel) msel.onchange = () => {
     const m = members[parseInt(msel.value, 10)];
     if (!m) return;
@@ -1300,6 +1308,19 @@ function openCertModal(ci) {
   document.getElementById("cfCancel").onclick = close;
   document.getElementById("cfSave").onclick = () => { if (persist()) close(); };
   document.getElementById("cfSaveOpen").onclick = () => { const r = persist(); if (r) { close(); openShareCertificate(r); } };
+}
+
+// Entry point from a Register of Members row: edit that member's existing
+// certificate if one is already indexed, otherwise start a new one pre-filled
+// from the member.
+function openCertForMember(mi) {
+  const m = (data.members && data.members.current && data.members.current[mi]) || null;
+  if (!m || !m.member) { alert("Couldn't find that member."); return; }
+  const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const rows = (data.certificates && data.certificates.rows) || [];
+  const existing = rows.findIndex(r => (r.certNo || r.holder) && norm(r.holder) === norm(m.member));
+  if (existing >= 0) openCertModal(existing);
+  else openCertModal(null, m);
 }
 
 // Kept for any direct call: resolve holder detail from the members register.
