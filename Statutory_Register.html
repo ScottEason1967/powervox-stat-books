@@ -1209,6 +1209,34 @@ function todayLong() {
   return new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// Format a per-share amount tidily: £1, £0.01, £0.001.
+function fmtMoney(v, sym) {
+  sym = sym || "£";
+  if (!isFinite(v)) return "";
+  if (Number.isInteger(v)) return sym + v;
+  let s = v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  if ((s.split(".")[1] || "").length < 2) s = v.toFixed(2);
+  return sym + s;
+}
+
+// Work out the nominal value PER SHARE for a member's class, from the register.
+// The members register records each holding's aggregate nominal (e.g. £2.50 for
+// 250 shares), so per share = aggregate ÷ shares. If the member's own row has no
+// figure, borrow the ratio from another member of the same class, then from any
+// member. Returns "" when the record carries no nominal value anywhere.
+function perShareNominal(member) {
+  const amt = s => { const n = parseFloat(String(s == null ? "" : s).replace(/[^0-9.]/g, "")); return isNaN(n) ? null : n; };
+  const shr = s => { const n = parseInt(String(s == null ? "" : s).replace(/[^0-9]/g, ""), 10); return isNaN(n) ? null : n; };
+  const sym = s => { const m = String(s || "").match(/[£$€]/); return m ? m[0] : "£"; };
+  const per = m => { const a = amt(m && m.nominal), n = shr(m && m.shares); return (a != null && n) ? { v: a / n, s: sym(m.nominal) } : null; };
+  const rows = (data.members && data.members.current) || [];
+  const cls = member && member.cls;
+  let r = per(member);
+  if (!r && cls) { for (const m of rows) { if ((m.cls || "") === cls) { r = per(m); if (r) break; } } }
+  if (!r) { for (const m of rows) { r = per(m); if (r) break; } }
+  return r ? fmtMoney(r.v, r.s) : "";
+}
+
 // The certificate workflow. Opens a form pre-filled from the record, exposes any
 // blanks as fields, and on save writes the certificate back into the register
 // (creating or updating the Share Certificates index row) before optionally
@@ -1229,7 +1257,7 @@ function openCertModal(ci, seedMember) {
     address: editing ? (editing.address || seedMem.address || "") : (seedMem.address || ""),
     cls: editing ? (editing.cls || seedMem.cls || "Ordinary") : (seedMem.cls || "Ordinary"),
     shares: editing ? (editing.shares || seedMem.shares || "") : (seedMem.shares || ""),
-    nominal: editing ? (editing.nominal || seedMem.nominal || "") : (seedMem.nominal || ""),
+    nominal: editing ? (editing.nominal || perShareNominal(seedMem)) : perShareNominal(seedMem),
     paidUp: editing ? (editing.paidUp || seedMem.paidUp || "Fully paid") : (seedMem.paidUp || "Fully paid"),
     issued: editing ? (editing.issued || "") : todayLong(),
     statusType: editing ? (editing.statusType || "current") : "current"
@@ -1270,7 +1298,7 @@ function openCertModal(ci, seedMember) {
     document.getElementById("cfAddress").value = m.address || "";
     document.getElementById("cfCls").value = m.cls || "Ordinary";
     document.getElementById("cfShares").value = m.shares || "";
-    document.getElementById("cfNominal").value = m.nominal || "";
+    document.getElementById("cfNominal").value = perShareNominal(m);
     document.getElementById("cfPaidUp").value = m.paidUp || "Fully paid";
   };
 
@@ -1336,7 +1364,7 @@ function generateShareCert(ci) {
   openShareCertificate({
     certNo: r.certNo, holder: r.holder, address: r.address || mem.address || "",
     cls: r.cls || mem.cls || "Ordinary", shares: r.shares || mem.shares || "",
-    nominal: r.nominal || mem.nominal || "", paidUp: r.paidUp || mem.paidUp || "Fully paid", issued: r.issued || ""
+    nominal: r.nominal || perShareNominal(mem.member ? mem : { cls: r.cls }), paidUp: r.paidUp || mem.paidUp || "Fully paid", issued: r.issued || ""
   });
 }
 
