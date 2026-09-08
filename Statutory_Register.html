@@ -1694,8 +1694,8 @@ function mergeCompaniesHouse(p) {
     let card = data.directors.history.find(c => sameName(c.name, disp));
     if (!card) { card = { name: disp, note: officerNote(o), rows: [] }; data.directors.history.push(card); }
     else if (!card.note) card.note = officerNote(o);
-    if (appointed && !card.rows.some(r => r.date === appointed && /appoint/i.test(r.event))) card.rows.push({ event: "Appointed", date: appointed, filed: "" });
-    if (resigned && !card.rows.some(r => r.date === resigned && /resign/i.test(r.event))) card.rows.push({ event: "Resigned", date: resigned, filed: "" });
+    if (appointed) upsertHistRow(card, "Appointed", appointed, filingRef(p.filings, disp, "appoint", o.appointed_on), /appoint/i);
+    if (resigned) upsertHistRow(card, "Resigned", resigned, filingRef(p.filings, disp, "resign", o.resigned_on), /resign/i);
   });
   (p.psc || []).forEach(s => {
     const raw = (s.name || (s.name_elements ? [s.name_elements.forename, s.name_elements.middle_name, s.name_elements.surname].filter(Boolean).join(" ") : "")) || "";
@@ -1774,6 +1774,55 @@ function pruneBlanks() {
   prune(data.members.history, ["member"]);
 }
 function sameName(a, b) { return a && b && a.replace(/[^a-z]/gi, "").toLowerCase() === b.replace(/[^a-z]/gi, "").toLowerCase(); }
+// Order-independent officer-name match. Companies House filings name officers as
+// "SURNAME, Forename(s)"; our display name is "Forename Surname". Match on the
+// surname plus at least one forename so the two forms line up.
+function matchOfficerName(filingName, disp) {
+  if (!filingName || !disp) return false;
+  const toks = s => s.toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(Boolean);
+  let sur, fore;
+  if (filingName.indexOf(",") >= 0) { const parts = filingName.split(","); sur = parts[0]; fore = parts.slice(1).join(" "); }
+  else { const t = filingName.trim().split(/\s+/); sur = t[t.length - 1] || ""; fore = t.slice(0, -1).join(" "); }
+  const surT = (toks(sur)[0] || ""); const foreT = toks(fore); const dispT = toks(disp);
+  if (!surT || dispT.indexOf(surT) < 0) return false;
+  if (foreT.length && !foreT.some(f => dispT.indexOf(f) >= 0)) return false;
+  return true;
+}
+function ddmmyyyy(s) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : (s || ""); }
+// Find the Companies House filing that recorded an officer event and return a
+// reference like "AP01 filed 15/05/2026". kind is "appoint" or "resign". Matches
+// on officer name and the effective (appointment/termination) date, preferring a
+// match on both; rejects a name match whose date clearly disagrees.
+function filingRef(filings, officerName, kind, isoDate) {
+  if (!Array.isArray(filings)) return "";
+  const appt = kind === "appoint";
+  let best = null, bestScore = 0;
+  filings.forEach(f => {
+    const t = (f.type || "").toUpperCase();
+    const dv = f.description_values || {};
+    const desc = (f.description || "") + " " + JSON.stringify(dv);
+    let rel, dvDate;
+    if (appt) { rel = /^AP0/.test(t) || /appoint/i.test(desc); dvDate = dv.appointment_date || ""; }
+    else { rel = /^TM0/.test(t) || /terminat|resign|cease/i.test(desc); dvDate = dv.termination_date || dv.cessation_date || ""; }
+    if (!rel) return;
+    const nameOk = dv.officer_name ? matchOfficerName(dv.officer_name, officerName) : null;
+    const dateOk = (isoDate && dvDate) ? (dvDate === isoDate) : null;
+    let score = 0;
+    if (nameOk && dateOk) score = 3;
+    else if (nameOk && dateOk === false) score = 0;      // right person, wrong date — not this event
+    else if (nameOk) score = 2;                            // right person, date not stated
+    else if (nameOk === null && dateOk) score = 1;         // date matches, filing names no officer
+    if (score > bestScore) { bestScore = score; best = f; }
+  });
+  if (!best || bestScore < 1) return "";
+  return (best.type ? best.type.toUpperCase() : "Filing") + " filed " + ddmmyyyy(best.date);
+}
+// Add or heal an officer-history row, filling the filing reference where known.
+function upsertHistRow(card, event, date, filed, kindRe) {
+  const ex = card.rows.find(r => r.date === date && kindRe.test(r.event));
+  if (!ex) card.rows.push({ event: event, date: date, filed: filed || "" });
+  else if (!ex.filed && filed) ex.filed = filed; // heal blanks on a later update
+}
 function displayName(n) {
   if (/,/.test(n)) { const p = n.split(","); return ((p[1] || "").trim() + " " + titleCase((p[0] || "").trim())).trim(); }
   if (n && n === n.toUpperCase() && /[A-Z]/.test(n)) return titleCase(n);
