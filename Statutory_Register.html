@@ -1732,8 +1732,12 @@ function mergeCompaniesHouse(p) {
     p.members.current.forEach(m => {
       if (!m.name) return;
       const cls = m.cls || "";
-      const exists = data.members.current.some(x => sameName(x.member, m.name) && (x.cls || "") === cls);
-      if (!exists) { data.members.current.push({ member: displayName(m.name), address: "", cls: cls, shares: (m.shares != null ? String(m.shares) : ""), nominal: m.nominal || "", paidUp: "Fully paid" }); log.push({ kind: "added", msg: "member " + displayName(m.name) }); }
+      const existing = data.members.current.find(x => sameName(x.member, m.name) && (x.cls || "") === cls);
+      if (!existing) { data.members.current.push({ member: displayName(m.name), address: "", cls: cls, shares: (m.shares != null ? String(m.shares) : ""), nominal: m.nominal || "", paidUp: "Fully paid" }); log.push({ kind: "added", msg: "member " + displayName(m.name) }); }
+      else { // heal blanks on an existing member without disturbing edits
+        if (!existing.nominal && m.nominal) existing.nominal = m.nominal;
+        if (!existing.shares && m.shares != null) existing.shares = String(m.shares);
+      }
     });
     if (p.members.source) data.members.asAtNote = "Current members (" + p.members.source + ")";
   }
