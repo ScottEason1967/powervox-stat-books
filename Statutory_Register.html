@@ -162,7 +162,7 @@ body.ready #onboard { display: none; }
   background: #fff; border: 1px solid var(--wash-line); border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 6px; z-index: 70;
   display: none; flex-direction: column; gap: 4px; }
-.menu:hover > .menu-panel, .menu:focus-within > .menu-panel { display: flex; }
+.menu:hover > .menu-panel, .menu.open > .menu-panel { display: flex; }
 .menu-panel .btn { width: 100%; justify-content: flex-start; text-align: left; letter-spacing: .02em; }
 .menu-panel::before { content: ""; position: absolute; top: -6px; left: 0; right: 0; height: 6px; } /* hover bridge */
 
@@ -732,14 +732,15 @@ function renderView() {
   const m = data.members;
   h += '<section id="members"><h2>3. Register of Members</h2>';
   if (m.note) h += '<p class="section-note">' + esc(m.note) + "</p>";
-  h += "<h3>" + esc(m.asAtNote || "Current members") + "</h3><table><thead><tr><th>Member</th><th>Address</th><th>Class</th><th class=\"numeric\">Shares held</th><th class=\"numeric\">Nominal value</th><th>Paid up</th></tr></thead><tbody>";
+  h += "<h3>" + esc(m.asAtNote || "Current members") + "</h3><table><thead><tr><th>Member</th><th>Address</th><th>Class</th><th class=\"numeric\">Shares held</th><th class=\"numeric\">Nominal value</th><th>Paid up</th><th class=\"gen-col\"></th></tr></thead><tbody>";
   let totShares = 0;
-  m.current.forEach(x => {
+  m.current.forEach((x, mi) => {
     if (!x.member) return;
     const n = parseInt(String(x.shares).replace(/[^0-9]/g, ""), 10); if (!isNaN(n)) totShares += n;
-    h += "<tr><td><strong>" + esc(x.member) + "</strong></td><td>" + esc(x.address) + "</td><td>" + esc(x.cls) + "</td><td class=\"numeric\">" + esc(x.shares) + "</td><td class=\"numeric\">" + esc(x.nominal) + "</td><td>" + esc(x.paidUp) + "</td></tr>";
+    const gen = '<button type="button" class="gen-btn" onclick="generateCertFromMember(' + mi + ')">Certificate</button>';
+    h += "<tr><td><strong>" + esc(x.member) + "</strong></td><td>" + esc(x.address) + "</td><td>" + esc(x.cls) + "</td><td class=\"numeric\">" + esc(x.shares) + "</td><td class=\"numeric\">" + esc(x.nominal) + "</td><td>" + esc(x.paidUp) + "</td><td class=\"gen-col\">" + gen + "</td></tr>";
   });
-  if (totShares > 0) h += '<tr class="totals"><td colspan="3">Total issued share capital</td><td class="numeric">' + totShares.toLocaleString() + '</td><td class="numeric"></td><td>Fully paid</td></tr>';
+  if (totShares > 0) h += '<tr class="totals"><td colspan="3">Total issued share capital</td><td class="numeric">' + totShares.toLocaleString() + '</td><td class="numeric"></td><td>Fully paid</td><td class="gen-col"></td></tr>';
   h += "</tbody></table>";
   if (m.history && m.history.some(x => x.member)) {
     h += "<h3>Member holding history</h3>";
@@ -1180,20 +1181,44 @@ function exportRegister() {
   downloadFile(html, (data.company.name || "statutory-register").replace(/[^a-z0-9]+/gi, "_") + "_Statutory_Register.html", "text/html");
 }
 
-// Build a printable A4 share certificate from a certificate-index row, filling in
-// the holder's address, nominal value and paid-up status from the members register
-// where they can be matched. Opens in a new window with a Print / Save-as-PDF button.
+// Entry point from the Share Certificates index: resolve holder detail from the
+// members register (address / nominal / paid-up) where the names match.
 function generateShareCert(ci) {
   const r = (data.certificates && data.certificates.rows && data.certificates.rows[ci]) || null;
   if (!r) { alert("Couldn't find that certificate row."); return; }
-  const c = data.company || {};
-  // Match the holder to a member so we can add address / nominal / paid-up detail.
   const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
   const mem = ((data.members && data.members.current) || []).find(m => norm(m.member) === norm(r.holder)) || {};
-  const cls = r.cls || mem.cls || "Ordinary";
-  const nominal = mem.nominal || "";
-  const paidUp = mem.paidUp || "Fully paid";
-  const address = mem.address || "";
+  openShareCertificate({
+    certNo: r.certNo, holder: r.holder, address: mem.address || "",
+    cls: r.cls || mem.cls || "Ordinary", shares: r.shares || mem.shares || "",
+    nominal: mem.nominal || "", paidUp: mem.paidUp || "Fully paid", issued: r.issued || ""
+  });
+}
+
+// Entry point from the Register of Members: everything a certificate needs is
+// already on the member row, so no name-matching is required.
+function generateCertFromMember(mi) {
+  const m = (data.members && data.members.current && data.members.current[mi]) || null;
+  if (!m || !m.member) { alert("Couldn't find that member."); return; }
+  // Re-use an existing certificate number for this holder if the index has one.
+  const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const cert = ((data.certificates && data.certificates.rows) || []).find(r => norm(r.holder) === norm(m.member) && r.certNo) || {};
+  openShareCertificate({
+    certNo: cert.certNo || "", holder: m.member, address: m.address || "",
+    cls: m.cls || "Ordinary", shares: m.shares || "", nominal: m.nominal || "",
+    paidUp: m.paidUp || "Fully paid", issued: cert.issued || ""
+  });
+}
+
+// Build a printable A4 share certificate from a resolved holder object and open
+// it in a new window with a Print / Save-as-PDF button.
+function openShareCertificate(o) {
+  const c = data.company || {};
+  const r = o;
+  const cls = o.cls || "Ordinary";
+  const nominal = o.nominal || "";
+  const paidUp = o.paidUp || "Fully paid";
+  const address = o.address || "";
   const logo = CONFIG.logoUrl || (typeof EL_LOGO !== "undefined" ? EL_LOGO : "");
   const e = esc;
 
@@ -1262,6 +1287,27 @@ function generateShareCert(ci) {
   const w = window.open("", "_blank");
   if (!w) { alert("Please allow pop-ups to open the certificate."); return; }
   w.document.open(); w.document.write(doc); w.document.close();
+}
+
+// Toolbar category menus: hover opens them (CSS); a click toggles them open for
+// touch/keyboard, and any choice or outside click closes them again so panels
+// never linger or overlap.
+function setupMenus() {
+  const menus = Array.from(document.querySelectorAll(".appbar .menu"));
+  const closeAll = () => menus.forEach(m => m.classList.remove("open"));
+  menus.forEach(m => {
+    const trig = m.querySelector(".menu-trigger");
+    if (trig) trig.addEventListener("click", e => {
+      e.stopPropagation();
+      const wasOpen = m.classList.contains("open");
+      closeAll();
+      if (!wasOpen) m.classList.add("open");
+    });
+    const panel = m.querySelector(".menu-panel");
+    if (panel) panel.addEventListener("click", () => closeAll()); // chose an action
+    m.addEventListener("mouseleave", () => m.classList.remove("open"));
+  });
+  document.addEventListener("click", closeAll);
 }
 // Data export: the registers as an Excel workbook, one sheet per register.
 // The presentable book lives inside the subscription (and prints); the export
@@ -1756,6 +1802,7 @@ function init() {
   document.getElementById("btnDownload").onclick = exportExcel;
   document.getElementById("btnPrint").onclick = () => window.print();
   document.getElementById("btnEdit").onclick = toggleEdit;
+  setupMenus();
   // Nav bars: small logo on a white chip so the crimson mark doesn't sink into the red.
   const chip = '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
   document.getElementById("appBrand").innerHTML = chip;
