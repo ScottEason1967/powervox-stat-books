@@ -245,6 +245,41 @@ function parseCapitalTotal(text) {
   return seen ? sum : null;
 }
 
+function curSym(c) { c = (c || "").toUpperCase(); return c === "GBP" ? "£" : c === "USD" ? "$" : c === "EUR" ? "€" : (c ? c + " " : "£"); }
+function fmtAmount(sym, v) { if (!isFinite(v)) return ""; const r = Math.round(v * 100) / 100; return sym + (Number.isInteger(r) ? String(r) : r.toFixed(2)); }
+
+// Read the nominal value PER SHARE from a statement of capital. This is not a
+// guess: Companies House states the aggregate nominal value and the number
+// allotted, so per share = aggregate ÷ number. Returns per-class values plus an
+// overall figure, and the currency, or null if the statement carries neither.
+function parseCapitalNominal(text) {
+  if (!text) return null;
+  const t = text.replace(/\r/g, " ");
+  const curM = /Currency:?\s*([A-Za-z]{3})/i.exec(t);
+  const currency = curM ? curM[1].toUpperCase() : "GBP";
+  const byClass = {};
+  const segs = t.split(/Class of Shares?\s*:?/i).slice(1);
+  segs.forEach(seg => {
+    const head = seg.slice(0, 300);
+    const nameM = /^\s*["']?([A-Za-z][A-Za-z0-9 .\-]*?)\s*(?:Currency|Number allotted|Prescribed|Amount|Aggregate|$)/i.exec(head);
+    const numM = /Number allotted\s*:?\s*([\d,]+)/i.exec(head);
+    const aggM = /Aggregate nominal value\s*:?\s*[£$€]?\s*([\d,]+(?:\.\d+)?)/i.exec(head);
+    if (nameM && numM && aggM) {
+      const cls = normaliseClass(nameM[1]);
+      const num = parseInt(numM[1].replace(/,/g, ""), 10);
+      const agg = parseFloat(aggM[1].replace(/,/g, ""));
+      if (cls && num > 0 && agg > 0) { const ps = agg / num; if (ps > 0 && ps < 1e6) byClass[cls] = ps; }
+    }
+  });
+  let overall = null;
+  const tn = /Total number of shares\s*:?\s*([\d,]+)/i.exec(t);
+  const ta = /Total aggregate nominal value\s*:?\s*[£$€]?\s*([\d,]+(?:\.\d+)?)/i.exec(t);
+  if (tn && ta) { const n = parseInt(tn[1].replace(/,/g, ""), 10); const a = parseFloat(ta[1].replace(/,/g, "")); if (n > 0 && a > 0) overall = a / n; }
+  if (overall == null) { const ks = Object.keys(byClass); if (ks.length === 1) overall = byClass[ks[0]]; }
+  if (!Object.keys(byClass).length && overall == null) return null;
+  return { currency, byClass, overall };
+}
+
 // Returns rich transfer lines: [{ dateISO, dateDisp, count, cls, from }].
 // Each "Shareholding N" block names its holder; a "<count> transferred on
 // <date>" line inside the block is shares moving OUT of that holding, so the
@@ -332,6 +367,7 @@ async function buildMembers(filings, key) {
   let rawSample = "";
   let ocrDiag = null;
   let capital = null; // latest issued-share total seen in a statement of capital
+  let nominalDetail = null; // per-share nominal from the latest statement of capital
   let membersISO = ""; // filing date of the document the members came from
   let lastOcrText = ""; // kept so a fruitless OCR can be inspected in the response
 
@@ -355,6 +391,7 @@ async function buildMembers(filings, key) {
       const tot = parseCapitalTotal(text);
       if (tot != null) capital = { total: tot, asAt: chDate(f.date), iso: String(f.date || "") }; // newest-first walk: first hit is the latest position
     }
+    if (!nominalDetail) { const nd = parseCapitalNominal(text); if (nd) nominalDetail = nd; }
     if (current.length === 0) {
       const sh = parseShareholders(text);
       if (sh.length) {
@@ -419,6 +456,7 @@ async function buildMembers(filings, key) {
       const tot = parseCapitalTotal(ocrText);
       if (tot != null) capital = { total: tot, asAt: chDate(f.date), iso: String(f.date || "") };
     }
+    if (!nominalDetail) { const nd = parseCapitalNominal(ocrText); if (nd) nominalDetail = nd; }
     const sh = parseShareholders(ocrText);
     if (sh.length) {
       current = sh;
@@ -532,9 +570,19 @@ async function buildMembers(filings, key) {
   // exactly the discrepancy worth flagging, so that survives.)
   if (capital && membersISO && capital.iso && capital.iso < membersISO) capital = null;
 
-  // name, class and share count only — nominal value and address are left blank
-  // for the user, to avoid putting guessed figures into a statutory register.
-  current = current.map(s => ({ name: s.name, cls: s.cls, shares: s.shares, nominal: "" }));
+  // Name, class and share count come from the shareholder list; the nominal value
+  // of each holding is derived from the statement of capital (aggregate ÷ number
+  // allotted = per share, then × the member's shares). This is read from the
+  // record, not guessed. Address is still left blank for the user to complete.
+  current = current.map(s => {
+    let nominal = "";
+    if (nominalDetail) {
+      const ps = (nominalDetail.byClass && nominalDetail.byClass[s.cls] != null) ? nominalDetail.byClass[s.cls] : nominalDetail.overall;
+      const n = parseInt(String(s.shares).replace(/[^0-9]/g, ""), 10);
+      if (ps != null && ps > 0 && n > 0) nominal = fmtAmount(curSym(nominalDetail.currency), n * ps);
+    }
+    return { name: s.name, cls: s.cls, shares: s.shares, nominal: nominal };
+  });
 
   // Exact duplicates (same event parsed from more than one document) collapse.
   const seenT = new Set();
