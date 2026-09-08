@@ -565,6 +565,26 @@ async function buildMembers(filings, key) {
   // the diagnostic that matters, not the first text document's boilerplate.
   if (!current.length && lastOcrText) rawSample = lastOcrText.slice(0, 2000);
 
+  // Capital and nominal can live in a standalone Statement of Capital (SH01/SH02),
+  // filed separately from the confirmation statement — typically after an allotment
+  // or a share sub-division. Many confirmation statements then just relist the
+  // shareholders and carry no statement of capital of their own, so read the newest
+  // such filing to recover the capital total and the per-share nominal.
+  if (!nominalDetail || !capital) {
+    const socFilings = filings
+      .filter(f => /^SH0[12]$/i.test(f.type || "") || (f.category || "") === "capital")
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    for (const f of socFilings.slice(0, 2)) {
+      if (Date.now() - t0 > 45000) break; // stay inside the function time budget
+      let text = "";
+      try { text = await fetchDocumentText(f.links && f.links.document_metadata, key); } catch (e) { text = ""; }
+      if ((text || "").replace(/\s+/g, "").length < 40) continue; // scanned SoC — skip rather than spend OCR budget
+      if (!capital) { const tot = parseCapitalTotal(text); if (tot != null) capital = { total: tot, asAt: chDate(f.date), iso: String(f.date || "") }; }
+      if (!nominalDetail) { const nd = parseCapitalNominal(text); if (nd) nominalDetail = nd; }
+      if (capital && nominalDetail) break;
+    }
+  }
+
   // A capital total OLDER than the document the members came from is stale and
   // would raise a false alarm — suppress it. (Capital newer than the members is
   // exactly the discrepancy worth flagging, so that survives.)
