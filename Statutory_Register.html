@@ -117,6 +117,9 @@ body { font-family: var(--sans); font-size: 15px; line-height: 1.62; color: var(
 #onboard .obfoot a { color: var(--muted); border-bottom-color: var(--wash-line); }
 #onboard .obfoot a:hover { color: var(--forest); border-color: var(--gold); }
 #onboard .obfoot span { color: var(--stone); }
+#onboard .obfoot.poweredby { margin-top: 12px; font-size: 11px; letter-spacing: .06em; }
+/* Discreet platform credit in the register's own footer (prints and exports with it). */
+.doc-poweredby { margin-top: 16px; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); opacity: .7; }
 #onboard .ob-status { color: var(--ink); }
 #onboard .ob-status:not(:empty) { background: var(--wash); border-color: var(--gold); }
 #onboard .ob-results .none { color: var(--muted); }
@@ -391,6 +394,7 @@ body.mode-edit .view-only { display: none; }
     <p class="obfoot">
       <a href="https://easonlaw.co.uk" target="_blank" rel="noopener">Eason Law</a><span>·</span><a href="/terms.html">Terms &amp; Conditions</a><span>·</span><a href="/privacy.html">Privacy Policy</a>
     </p>
+    <p class="obfoot poweredby"><a href="https://www.powervox.co.uk" target="_blank" rel="noopener">Powered by Powervox</a></p>
   </div>
 </div>
 
@@ -867,6 +871,7 @@ function renderFooter() {
   if (f.maintenanceNote) h += "<p><strong>Register maintenance.</strong> " + esc(f.maintenanceNote) + "</p>";
   if (f.inspectionNote) h += "<p><strong>Inspection.</strong> " + esc(f.inspectionNote) + "</p>";
   if (f.lastUpdated) h += "<p><strong>Last updated.</strong> " + esc(f.lastUpdated) + "</p>";
+  h += '<p class="doc-poweredby">Powered by Powervox</p>';
   document.getElementById("footerRoot").innerHTML = h;
 }
 function renderHealth() {
