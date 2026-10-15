@@ -160,15 +160,39 @@ function parseShareholders(text) {
   if (!text) return [];
   const out = [];
   const t = text.replace(/\r/g, "");
-  // Confirmation statements say "...this confirmation statement"; older annual
-  // returns (AR01) say "...this return". Accept both.
-  const re = /([\d,]+)\s+([A-Z][A-Z ]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+(?:confirmation\s+statement|return)\s*Name:\s*([^\n\r]+)/gi;
-  let m;
-  while ((m = re.exec(t)) !== null) {
-    const shares = parseInt(m[1].replace(/,/g, ""), 10);
-    const cls = normaliseClass(m[2]);
-    const name = cleanName(m[3]);
-    if (name && shares > 0) out.push({ name, shares, cls });
+  // The class token allows an embedded space OR newline: a class such as
+  // "ORDINARY B" is laid out on two lines in some filings ("ORDINARY" then "B"),
+  // and normaliseClass collapses the whitespace. Confirmation statements say
+  // "...this confirmation statement"; older annual returns (AR01) say "...return".
+  const heldRe = /([\d,]+)\s+([A-Z][A-Z \n]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+(?:confirmation\s+statement|return)/gi;
+
+  // Primary pass: walk each "Shareholding N" block and attach EVERY "shares held"
+  // line in it to that block's single Name. A shareholder who holds more than one
+  // class is listed as several "shares held" lines under one Name — the old
+  // single-line pattern only caught the line next to "Name:" and silently dropped
+  // the rest, understating the register (e.g. 100 shown where 100 + 100 B exist).
+  const blocks = t.split(/Shareholding\s+\d+\s*:?/i).slice(1);
+  for (const b of blocks) {
+    const nameM = /Name\s*:\s*([^\n\r]+)/i.exec(b);
+    const name = nameM ? cleanName(nameM[1]) : "";
+    if (!name) continue;
+    let m; heldRe.lastIndex = 0;
+    while ((m = heldRe.exec(b)) !== null) {
+      const shares = parseInt(m[1].replace(/,/g, ""), 10);
+      if (shares > 0) out.push({ name, shares, cls: normaliseClass(m[2]) });
+    }
+  }
+
+  // Fallback for layouts with no "Shareholding N" labels: the original flat
+  // pattern, which pairs a single held-line with the Name that follows it.
+  if (!out.length) {
+    const flat = /([\d,]+)\s+([A-Z][A-Z \n]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+(?:confirmation\s+statement|return)\s*Name:\s*([^\n\r]+)/gi;
+    let m;
+    while ((m = flat.exec(t)) !== null) {
+      const shares = parseInt(m[1].replace(/,/g, ""), 10);
+      const name = cleanName(m[3]);
+      if (name && shares > 0) out.push({ name, shares, cls: normaliseClass(m[2]) });
+    }
   }
   return dedupeShareholders(out);
 }
