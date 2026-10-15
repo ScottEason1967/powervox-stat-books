@@ -158,41 +158,42 @@ function normaliseClass(raw) {
 // transfer text wedged before a holding does not break the match.
 function parseShareholders(text) {
   if (!text) return [];
-  const out = [];
   const t = text.replace(/\r/g, "");
-  // The class token allows an embedded space OR newline: a class such as
-  // "ORDINARY B" is laid out on two lines in some filings ("ORDINARY" then "B"),
-  // and normaliseClass collapses the whitespace. Confirmation statements say
-  // "...this confirmation statement"; older annual returns (AR01) say "...return".
+  // Companies House lists each holding as one or more "<count> <CLASS> shares held
+  // as at the date of this confirmation statement" lines, FOLLOWED by a single
+  // "Name:" line. A shareholder who holds more than one class therefore has
+  // several held-lines before one Name. The old pattern required the held-line to
+  // sit immediately before "Name:", so it caught only the last class and dropped
+  // the rest (showing 100 where 100 Ordinary + 100 Ordinary B exist).
+  //
+  // This walks held-lines and Name-lines in document order and assigns every
+  // held-line to the Name that closes its block — independent of "Shareholding N"
+  // labels. The class token allows an embedded space OR newline, because a class
+  // such as "ORDINARY B" is sometimes laid out across two lines; normaliseClass
+  // then collapses the whitespace. Annual returns (AR01) say "...return".
+  const events = [];
   const heldRe = /([\d,]+)\s+([A-Z][A-Z \n]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+(?:confirmation\s+statement|return)/gi;
-
-  // Primary pass: walk each "Shareholding N" block and attach EVERY "shares held"
-  // line in it to that block's single Name. A shareholder who holds more than one
-  // class is listed as several "shares held" lines under one Name — the old
-  // single-line pattern only caught the line next to "Name:" and silently dropped
-  // the rest, understating the register (e.g. 100 shown where 100 + 100 B exist).
-  const blocks = t.split(/Shareholding\s+\d+\s*:?/i).slice(1);
-  for (const b of blocks) {
-    const nameM = /Name\s*:\s*([^\n\r]+)/i.exec(b);
-    const name = nameM ? cleanName(nameM[1]) : "";
-    if (!name) continue;
-    let m; heldRe.lastIndex = 0;
-    while ((m = heldRe.exec(b)) !== null) {
-      const shares = parseInt(m[1].replace(/,/g, ""), 10);
-      if (shares > 0) out.push({ name, shares, cls: normaliseClass(m[2]) });
-    }
+  let m;
+  while ((m = heldRe.exec(t)) !== null) {
+    const shares = parseInt(m[1].replace(/,/g, ""), 10);
+    if (shares > 0) events.push({ pos: m.index, held: { shares: shares, cls: normaliseClass(m[2]) } });
   }
+  // Bound the name so it stops at the next holder marker — a following
+  // "Shareholding", another "Name:", or the start of the next held line — rather
+  // than greedily running to the end of a filing whose lines pdf-parse ran
+  // together, which would swallow the next shareholder.
+  const nameRe = /Name\s*:\s*(.+?)(?=\s+Shareholding\b|\s+Name\s*:|\s+\d[\d,]*\s+[A-Z][A-Z ]*?\s+shares\s+held|[\r\n]|$)/gi;
+  while ((m = nameRe.exec(t)) !== null) {
+    const name = cleanName(m[1]);
+    if (name) events.push({ pos: m.index, name: name });
+  }
+  events.sort((a, b) => a.pos - b.pos);
 
-  // Fallback for layouts with no "Shareholding N" labels: the original flat
-  // pattern, which pairs a single held-line with the Name that follows it.
-  if (!out.length) {
-    const flat = /([\d,]+)\s+([A-Z][A-Z \n]*?)\s+shares\s+held\s+as\s+at\s+the\s+date\s+of\s+this\s+(?:confirmation\s+statement|return)\s*Name:\s*([^\n\r]+)/gi;
-    let m;
-    while ((m = flat.exec(t)) !== null) {
-      const shares = parseInt(m[1].replace(/,/g, ""), 10);
-      const name = cleanName(m[3]);
-      if (name && shares > 0) out.push({ name, shares, cls: normaliseClass(m[2]) });
-    }
+  const out = [];
+  let pending = [];
+  for (const e of events) {
+    if (e.held) pending.push(e.held);
+    else if (e.name) { for (const h of pending) out.push({ name: e.name, shares: h.shares, cls: h.cls }); pending = []; }
   }
   return dedupeShareholders(out);
 }
