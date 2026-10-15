@@ -200,13 +200,26 @@ header.masthead .gold-rule { width: 52px; height: 2px; background: var(--gold); 
 .statusflag strong { font-weight: 600; }
 
 /* nav */
-nav.toc { font-family: var(--sans); background: #fff; border-bottom: 1px solid var(--line); padding: 13px 48px; }
+/* Section pills stay pinned directly under the toolbar while the register scrolls.
+   --appbar-h is measured in JS (the toolbar wraps on narrow screens); it falls back
+   to 0 in a downloaded copy, where there is no toolbar and the pills pin to the top. */
+nav.toc { position: sticky; top: var(--appbar-h, 0px); z-index: 40; font-family: var(--sans); background: #fff; border-bottom: 1px solid var(--line); padding: 13px 48px; box-shadow: 0 8px 14px -12px rgba(0,0,0,.28); }
 nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 nav.toc a { display: inline-block; padding: 7px 15px; font-size: 12.5px; font-weight: 500; letter-spacing: .01em; color: var(--muted); text-decoration: none; border-radius: 16px; background: var(--sage-soft); transition: background .15s, color .15s; }
 nav.toc a:hover { background: var(--wash); color: var(--forest); }
+nav.toc a.active { background: var(--forest); color: #fff; }
+@media (max-width: 720px) {
+  /* On a phone the toolbar wraps to ~190px; pinning it AND the pills would eat a
+     third of the screen. Let the toolbar scroll away and pin only the pills. */
+  #app .appbar { position: static; }
+  nav.toc { padding: 10px 16px; }
+  nav.toc ul { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  nav.toc ul::-webkit-scrollbar { display: none; }
+  nav.toc a { white-space: nowrap; }
+}
 
 main { padding: 30px 48px 44px; }
-section { margin-bottom: 44px; scroll-margin-top: 80px; }
+section { margin-bottom: 44px; scroll-margin-top: calc(var(--appbar-h, 0px) + var(--toc-h, 56px) + 16px); }
 section h2 { font-family: var(--serif); font-size: 25px; font-weight: 600; color: var(--forest); border-bottom: 1px solid var(--stone); padding-bottom: 8px; margin: 0 0 16px; }
 section h3 { font-family: var(--serif); font-size: 18px; font-weight: 600; color: var(--forest); margin: 22px 0 10px; }
 .section-note { font-size: 13.5px; color: var(--muted); }
@@ -1138,6 +1151,7 @@ function showBook() {
   document.body.classList.remove("mode-edit");
   document.getElementById("btnEdit").textContent = "Edit details";
   renderView(); renderHealth(); renderStatusFlag(); renderReconcileFlag(); renderStamp();
+  _tocActive = null; updateTocActive(); // sections were just re-rendered
 }
 function renderStatusFlag() {
   const el = document.getElementById("statusFlag");
@@ -1192,6 +1206,11 @@ function exportRegister() {
   const suite = clone.querySelector(".suite"); if (suite) suite.remove();
   clone.querySelectorAll(".editor-only").forEach(n => n.remove());
   clone.querySelectorAll(".gen-col").forEach(n => n.remove()); // drop the Generate column from the exported book
+  // No toolbar in a downloaded copy: drop the live bar measurements so the pills
+  // pin to the top of the page, and clear the scroll highlight.
+  clone.style.removeProperty("--appbar-h");
+  clone.style.removeProperty("--toc-h");
+  clone.querySelectorAll("nav.toc a.active").forEach(a => a.classList.remove("active"));
   const er = clone.querySelector("#editRoot"); if (er) er.remove();
   clone.querySelectorAll("script").forEach(n => n.remove());
   const appEl = clone.querySelector("#app"); if (appEl) appEl.style.display = "block";
@@ -1498,6 +1517,68 @@ function setupMenus() {
     m.addEventListener("mouseleave", () => m.classList.remove("open"));
   });
   document.addEventListener("click", closeAll);
+}
+
+// Sticky section pills. The pills pin under the toolbar, so we measure the
+// toolbar (it wraps onto two lines on narrow screens) and the pill bar itself,
+// and publish both as CSS variables: one positions the pills, the other offsets
+// anchor jumps so a section heading lands below both bars instead of under them.
+// A ResizeObserver re-measures on resize and when the app first becomes visible.
+function setupStickyToc() {
+  const bar = document.querySelector("#app .appbar");
+  const toc = document.querySelector("#app nav.toc");
+  if (!toc) return;
+  const measure = () => {
+    const root = document.documentElement.style;
+    // Only reserve room for the toolbar while it is actually pinned (it is not on phones).
+    const barH = (bar && getComputedStyle(bar).position === "sticky") ? bar.offsetHeight : 0;
+    root.setProperty("--appbar-h", barH + "px");
+    root.setProperty("--toc-h", (toc.offsetHeight || 0) + "px");
+    updateTocActive();
+  };
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(measure);
+    if (bar) ro.observe(bar);
+    ro.observe(toc);
+  }
+  window.addEventListener("resize", measure);
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; updateTocActive(); });
+  }, { passive: true });
+  measure();
+}
+
+// Highlight the pill for the section currently under the bars. Sections are
+// re-rendered on every update, so they are looked up fresh each time.
+let _tocActive = null;
+function updateTocActive() {
+  const toc = document.querySelector("#app nav.toc");
+  if (!toc || !toc.offsetParent) return; // hidden (edit mode, onboarding, print)
+  const cs = getComputedStyle(document.documentElement);
+  const offset = (parseFloat(cs.getPropertyValue("--appbar-h")) || 0) + (parseFloat(cs.getPropertyValue("--toc-h")) || 0) + 24;
+  const secs = Array.from(document.querySelectorAll("#viewRoot section[id]"));
+  let current = null;
+  secs.forEach(s => { if (s.getBoundingClientRect().top - offset <= 0) current = s.id; });
+  // At the very bottom the last (short) section can never reach the top: mark it.
+  if (secs.length && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = secs[secs.length - 1].id;
+  if (current === _tocActive) return;
+  _tocActive = current;
+  let activeLink = null;
+  toc.querySelectorAll('a[href^="#"]').forEach(a => {
+    const on = a.getAttribute("href") === "#" + current;
+    a.classList.toggle("active", on);
+    if (on) activeLink = a;
+  });
+  // On narrow screens the pills scroll sideways: keep the active one in view
+  // (horizontal only, so the page itself never jumps).
+  const ul = toc.querySelector("ul");
+  if (activeLink && ul && ul.scrollWidth > ul.clientWidth) {
+    const a = activeLink.getBoundingClientRect(), u = ul.getBoundingClientRect();
+    ul.scrollBy({ left: (a.left + a.width / 2) - (u.left + u.width / 2), behavior: "smooth" });
+  }
 }
 // Data export: the registers as an Excel workbook, one sheet per register.
 // The presentable book lives inside the subscription (and prints); the export
@@ -2047,6 +2128,7 @@ function init() {
   document.getElementById("btnEdit").onclick = toggleEdit;
   document.getElementById("btnNewCert").onclick = () => openCertModal(null);
   setupMenus();
+  setupStickyToc();
   // Nav bars: small logo on a white chip so the crimson mark doesn't sink into the red.
   const chip = '<span class="logochip"><img src="' + EL_LOGO + '" alt="Eason Law — Statutory Registers"></span>';
   document.getElementById("appBrand").innerHTML = chip;
