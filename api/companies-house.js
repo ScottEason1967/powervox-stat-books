@@ -241,14 +241,36 @@ function parseInitialShareholders(text) {
     const blocks = seg.split(/(?=Name\s*:)/i);
     for (const b of blocks) {
       const nameM = /^\s*Name\s*:\s*([^\n]+)/i.exec(b);
-      const numM = /Number of shares?\s*:\s*([\d,]+)/i.exec(b);
-      const classM = /Class of Shares?\s*:\s*([A-Za-z][A-Za-z ]*?)\s*(?:\n|$|Number|Currency|Prescribed|Nominal)/i.exec(b);
-      if (nameM && numM) {
-        const name = cleanName(nameM[1]);
-        const shares = parseInt(numM[1].replace(/,/g, ""), 10);
-        const cls = classM ? normaliseClass(classM[1]) : "Ordinary";
-        if (name && shares > 0) out.push({ name, shares, cls });
+      if (!nameM) continue;
+      const name = cleanName(nameM[1]);
+      if (!name) continue;
+      // A subscriber can take shares in MORE THAN ONE class: each class is its own
+      // "Class of Shares / Number of shares" cluster under the one Name (e.g. 100
+      // ORDINARY and 100 ORDINARY B). Reading only the first cluster silently
+      // dropped every later class. Read them all, pairing the i-th class with the
+      // i-th number — the order survives even when OCR jumbles label/value lines.
+      // The class value is read up to the next label so a class that wraps onto a
+      // second line ("ORDINARY" / "B") is kept whole.
+      const classes = [];
+      const cre = /Class of Shares?\s*:\s*([\s\S]*?)(?=\s*(?:Number of shares?|Currency|Nominal value|Amount (?:un)?paid|Prescribed|Class of Shares?|Name\s*:)|\s*$)/gi;
+      let cm;
+      while ((cm = cre.exec(b)) !== null) {
+        const raw = cm[1].replace(/\s+/g, " ").trim();
+        classes.push(raw && raw.length <= 40 && /^[A-Za-z0-9][A-Za-z0-9 .\-]*$/.test(raw) ? normaliseClass(raw) : "");
       }
+      const nums = [];
+      const nre = /Number of shares?\s*:\s*([\d,]+)/gi;
+      let nm;
+      while ((nm = nre.exec(b)) !== null) nums.push(parseInt(nm[1].replace(/,/g, ""), 10));
+      // Sum per class within the subscriber, so two clusters that ever read as the
+      // same class add together instead of one being thrown away as a duplicate.
+      const byCls = new Map();
+      nums.forEach((n, i) => {
+        if (!(n > 0)) return;
+        const cls = classes[i] || (classes.length === 1 ? classes[0] : "") || "Ordinary";
+        byCls.set(cls, (byCls.get(cls) || 0) + n);
+      });
+      byCls.forEach((shares, cls) => out.push({ name, shares, cls }));
     }
   }
   return dedupeShareholders(out);
@@ -286,7 +308,7 @@ function parseCapitalNominal(text) {
   const segs = t.split(/Class of Shares?\s*:?/i).slice(1);
   segs.forEach(seg => {
     const head = seg.slice(0, 300);
-    const nameM = /^\s*["']?([A-Za-z][A-Za-z0-9 .\-]*?)\s*(?:Currency|Number allotted|Prescribed|Amount|Aggregate|$)/i.exec(head);
+    const nameM = /^\s*["']?([A-Za-z][A-Za-z0-9 .\-\n]*?)\s*(?:Currency|Number allotted|Prescribed|Amount|Aggregate|$)/i.exec(head);
     const numM = /Number allotted\s*:?\s*([\d,]+)/i.exec(head);
     const aggM = /Aggregate nominal value\s*:?\s*[£$€]?\s*([\d,]+(?:\.\d+)?)/i.exec(head);
     if (nameM && numM && aggM) {
